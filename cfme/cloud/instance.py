@@ -144,7 +144,7 @@ nav.add_branch(
             }
         ],
 
-        "clouds_instances":
+        "clouds_all_instances":
         [
             lambda _: accordion.tree("Instances", "All Instances"),
             {
@@ -159,7 +159,7 @@ nav.add_branch(
             }
         ],
 
-        "clouds_images":
+        "clouds_all_images":
         [
             lambda _: accordion.tree("Images", "All Images"),
             {
@@ -833,3 +833,14 @@ def unassign_policy_profiles(vm_name, *policy_profile_names, **kwargs):
         policy_profile_names: :py:class:`str` with Policy Profile names.
     """
     return _assign_unassign_policy_profiles(vm_name, False, *policy_profile_names, **kwargs)
+
+
+def mark_instances(vm_names):
+    """Mark (check) quadicons of specified instances
+
+    Args:
+        vm_names: Names of instances to mark (check)
+    """
+    sel.force_navigate('clouds_instances')
+    for vm_name in vm_names:
+        find_quadicon(vm_name).checkbox().check()
