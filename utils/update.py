@@ -8,8 +8,11 @@ def public_fields(o):
     """
     Returns: a dict of fields whose name don't start with underscore.
     """
-
-    return dict((key, value) for key, value in o.__dict__.iteritems() if not key.startswith('_'))
+    try:
+        return dict((key, value) for key, value in o.__dict__.iteritems()
+                    if not key.startswith('_'))
+    except AttributeError:
+        return dict()
 
 
 def all_public_fields_equal(a, b):
