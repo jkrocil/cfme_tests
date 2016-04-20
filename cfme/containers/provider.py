@@ -1,44 +1,50 @@
+import random
+
+from cfme.common import GetDetailMixin
 from cfme.common.provider import BaseProvider
+from cfme.exceptions import UnknownProviderType
 from cfme.fixtures import pytest_selenium as sel
 from cfme.web_ui import (
-    Quadicon, Form, AngularSelect, form_buttons, Input, toolbar as tb, InfoBlock
+    Quadicon, Form, AngularSelect, form_buttons, Input, InfoBlock
 )
-from cfme.web_ui.menu import nav
-from utils.browser import ensure_browser_open
+from cfme.web_ui.menu import nav, toolbar as tb
 from utils.db import cfmedb
 from utils.pretty import Pretty
 from utils.varmeth import variable
 
-from . import cfg_btn, mon_btn, pol_btn, details_page
+from . import cfg_btn, mon_btn, pol_btn
 
 nav.add_branch(
     'containers_providers',
-    {
-        'containers_provider_new':
-            lambda _: cfg_btn('Add a New Containers Provider'),
-        'containers_provider':
-        [
-            lambda ctx: sel.check(Quadicon(ctx['provider'].name, None).checkbox),
-            {
-                'containers_provider_edit':
-                lambda _: cfg_btn('Edit Selected Containers Provider'),
-                'containers_provider_edit_tags':
-                lambda _: pol_btn('Edit Tags')
-            }],
-        'containers_provider_detail':
-        [
-            lambda ctx: sel.click(Quadicon(ctx['provider'].name, None)),
-            {
-                'containers_provider_edit_detail':
-                lambda _: cfg_btn('Edit this Containers Provider'),
-                'containers_provider_timelines_detail':
-                lambda _: mon_btn('Timelines'),
-                'containers_provider_edit_tags_detail':
-                lambda _: pol_btn('Edit Tags'),
-                'containers_provider_topology_detail':
-                lambda _: sel.click(InfoBlock('Overview', 'Topology'))
-            }]
-    }
+    [
+        lambda: tb.select('Grid View'),
+        {
+            'containers_provider_new':
+                lambda _: cfg_btn('Add a New Containers Provider'),
+            'containers_provider':
+            [
+                lambda ctx: sel.check(Quadicon(ctx['provider'].name, None).checkbox),
+                {
+                    'containers_provider_edit':
+                    lambda _: cfg_btn('Edit Selected Containers Provider'),
+                    'containers_provider_edit_tags':
+                    lambda _: pol_btn('Edit Tags')
+                }],
+            'containers_provider_detail':
+            [
+                lambda ctx: sel.click(Quadicon(ctx['provider'].name, None)),
+                {
+                    'containers_provider_edit_detail':
+                    lambda _: cfg_btn('Edit this Containers Provider'),
+                    'containers_provider_timelines_detail':
+                    lambda _: mon_btn('Timelines'),
+                    'containers_provider_edit_tags_detail':
+                    lambda _: pol_btn('Edit Tags'),
+                    'containers_provider_topology_detail':
+                    lambda _: sel.click(InfoBlock('Overview', 'Topology'))
+                }]
+        }
+    ]
 )
 
 
@@ -52,7 +58,7 @@ properties_form = Form(
     ])
 
 
-class Provider(BaseProvider, Pretty):
+class Provider(BaseProvider, GetDetailMixin, Pretty):
     pretty_attrs = ['name', 'key', 'zone']
     STATS_TO_MATCH = [
         'num_project', 'num_service', 'num_replication_controller', 'num_pod', 'num_node',
@@ -80,33 +86,11 @@ class Provider(BaseProvider, Pretty):
         self.port = port
         self.provider_data = provider_data
 
-    def _on_detail_page(self):
-        """ Returns ``True`` if on the providers detail page, ``False`` if not."""
-        ensure_browser_open()
-        return sel.is_displayed('//div//h1[contains(., "{} (Summary)")]'.format(self.name))
+    def _nav_to_detail(self):
+        sel.force_navigate('containers_provider_detail', context={'provider': self})
 
-    def load_details(self, refresh=False):
-        if not self._on_detail_page():
-            self.navigate(detail=True)
-        elif refresh:
-            tb.refresh()
-
-    def navigate(self, detail=True):
-        if detail is True:
-            if not self._on_detail_page():
-                sel.force_navigate('containers_provider_detail', context={'provider': self})
-        else:
-            sel.force_navigate('containers_provider', context={'provider': self})
-
-    def get_detail(self, *ident):
-        """ Gets details from the details infoblock
-
-        Args:
-            *ident: An InfoBlock title, followed by the Key name, e.g. "Relationships", "Images"
-        Returns: A string representing the contents of the InfoBlock's value.
-        """
-        self.navigate(detail=True)
-        return details_page.infoblock.text(*ident)
+    def select(self):
+        sel.force_navigate('containers_provider', context={'provider': self})
 
     def _num_db_generic(self, table_str):
         res = cfmedb().engine.execute(
@@ -243,3 +227,39 @@ class OpenshiftProvider(Provider):
     @num_route.variant('ui')
     def num_route_ui(self):
         return int(self.get_detail("Relationships", "Routes"))
+
+
+def load_provider_UI(name=None):
+    """Loads a provider from its summary page; incomplete load (credentials)
+
+    Args:
+        name: Name of the provider in UI; if passed, will navigate to this provider's summary page
+              and load it, otherwise it will expect the browser to already be on its summary page
+    """
+    # Using generic container provider
+    if name:
+        prov = Provider(name=name)
+    else:
+        prov = Provider()
+        prov.name = prov.get_detail('Properties', 'Name')
+
+    def _determine_class(ui_type):
+        ui_type = ui_type.lower()
+        if 'openshift' in ui_type:
+            return OpenshiftProvider
+        elif 'kubernetes' in ui_type:
+            return KubernetesProvider
+        else:
+            raise UnknownProviderType("Unknown provider type; unable to determine from UI")
+
+    hostname = prov.get_detail('Properties', 'Hostname')
+    p_class = _determine_class(prov.get_detail('Properties', 'Type'))
+
+    return p_class(name=name, hostname=hostname)
+
+
+def get_a_provider_UI():
+    sel.force_navigate('containers_providers')
+    random_quad = Quadicon.random()
+    random_prov_name = random_quad._get_title()
+    return load_provider_UI(random_prov_name)

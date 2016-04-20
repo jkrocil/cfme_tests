@@ -7,6 +7,7 @@
 
 from cfme.web_ui.menu import nav
 
+from cfme.common import GetDetailMixin
 from cfme.exceptions import CandidateNotFound, ListAccordionLinkNotFound
 from cfme.fixtures import pytest_selenium as sel
 from cfme.web_ui import (
@@ -45,7 +46,7 @@ nav.add_branch(
 )
 
 
-class Datastore(Pretty):
+class Datastore(Pretty, GetDetailMixin):
     """ Model of an infrastructure datastore in cfme
 
     Args:
@@ -72,6 +73,9 @@ class Datastore(Pretty):
             context['provider'] = self.provider
         return context
 
+    def _nav_to_detail(self):
+        sel.force_navigate('infrastructure_datastore', context=self._get_context())
+
     def delete(self, cancel=True):
         """
         Deletes a datastore from CFME
@@ -95,26 +99,6 @@ class Datastore(Pretty):
         sel.force_navigate('infrastructure_datastores')
         wait_for(lambda: self.exists, fail_condition=False,
              message="Wait datastore to appear", num_sec=1000, fail_func=sel.refresh)
-
-    def get_detail(self, *ident):
-        """ Gets details from the details infoblock
-
-        The function first ensures that we are on the detail page for the specific datastore.
-
-        Args:
-            *ident: An InfoBlock title, followed by the Key name, e.g. "Relationships", "Images"
-        Returns: A string representing the contents of the InfoBlock's value.
-        """
-        if not self._on_detail_page():
-            sel.force_navigate('infrastructure_datastore', context=self._get_context())
-        return details_page.infoblock.text(*ident)
-
-    def _on_detail_page(self):
-        """ Returns ``True`` if on the datastore detail page, ``False`` if not."""
-        return sel.is_displayed(
-            '//div[@class="dhtmlxInfoBarLabel-2"][contains(., "{}") and contains(., "{}")]'.format(
-                self.name, "Summary")
-        )
 
     def get_hosts(self):
         """ Returns names of hosts (from quadicons) that use this datastore

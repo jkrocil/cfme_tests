@@ -6,6 +6,7 @@
 """
 
 from cfme.web_ui.menu import nav
+from cfme.common import GetDetailMixin
 from cfme.fixtures import pytest_selenium as sel
 from cfme.web_ui import Quadicon, Region, toolbar as tb
 from functools import partial
@@ -27,7 +28,7 @@ nav.add_branch(
 )
 
 
-class ResourcePool(Pretty):
+class ResourcePool(Pretty, GetDetailMixin):
     """ Model of an infrastructure Resource pool in cfme
 
     Args:
@@ -53,6 +54,9 @@ class ResourcePool(Pretty):
             context['provider'] = self.provider
         return context
 
+    def _nav_to_detail(self):
+        sel.force_navigate('infrastructure_resource_pool', context=self._get_context())
+
     def delete(self, cancel=True):
         """Deletes a resource pool from CFME
 
@@ -72,26 +76,6 @@ class ResourcePool(Pretty):
         sel.force_navigate('infrastructure_resource_pools')
         wait_for(lambda: self.exists, fail_condition=False,
              message="Wait resource pool to appear", num_sec=1000, fail_func=sel.refresh)
-
-    def get_detail(self, *ident):
-        """ Gets details from the details infoblock
-
-        The function first ensures that we are on the detail page for the specific resource pool.
-
-        Args:
-            *ident: An InfoBlock title, followed by the Key name, e.g. "Relationships", "Images"
-        Returns: A string representing the contents of the InfoBlock's value.
-        """
-        if not self._on_detail_page():
-            sel.force_navigate('infrastructure_resource_pool', context=self._get_context())
-        return details_page.infoblock.text(*ident)
-
-    def _on_detail_page(self):
-        """ Returns ``True`` if on the resource pool detail page, ``False`` if not."""
-        return sel.is_displayed(
-            '//div[@class="dhtmlxInfoBarLabel-2"][contains(., "{}") and contains(., "{}")]'.format(
-                self.name, "Summary")
-        )
 
     @property
     def exists(self):

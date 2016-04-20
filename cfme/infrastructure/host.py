@@ -15,6 +15,7 @@ from cfme.web_ui.menu import nav
 import cfme.web_ui.flash as flash
 import cfme.web_ui.toolbar as tb
 import utils.conf as conf
+from cfme.common import GetDetailMixin
 from cfme.exceptions import HostNotFound
 from cfme.web_ui import (
     AngularSelect, Region, Quadicon, Form, Select, CheckboxTree, CheckboxTable, DriftGrid, fill,
@@ -106,7 +107,7 @@ nav.add_branch('infrastructure_hosts',
                                                          '5.4': 'Provision this item'}))}]})
 
 
-class Host(Updateable, Pretty):
+class Host(Updateable, Pretty, GetDetailMixin):
     """
     Model of an infrastructure host in cfme.
 
@@ -178,6 +179,9 @@ class Host(Updateable, Pretty):
             sel.click(submit_button)
             flash.assert_no_errors()
 
+    def _nav_to_detail(self):
+        sel.force_navigate('infrastructure_host', context={'host': self})
+
     def create(self, cancel=False, validate_credentials=False):
         """
         Creates a host in the UI
@@ -246,24 +250,6 @@ class Host(Updateable, Pretty):
     def get_ipmi(self):
         return IPMI(hostname=self.ipmi_address, username=self.ipmi_credentials.principal,
                     password=self.ipmi_credentials.secret, interface_type=self.interface_type)
-
-    def get_detail(self, *ident):
-        """ Gets details from the details infoblock
-
-        The function first ensures that we are on the detail page for the specific host.
-
-        Args:
-            *ident: An InfoBlock title, followed by the Key name, e.g. "Relationships", "Images"
-        Returns: A string representing the contents of the InfoBlock's value.
-        """
-        if not self._on_detail_page():
-            sel.force_navigate('infrastructure_host', context={'host': self})
-        return details_page.infoblock.text(*ident)
-
-    def _on_detail_page(self):
-        """ Returns ``True`` if on the hosts detail page, ``False`` if not."""
-        return sel.is_displayed(
-            '//div[@class="dhtmlxInfoBarLabel-2"][contains(., "{}")]'.format(self.name))
 
     @property
     def exists(self):

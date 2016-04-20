@@ -1,7 +1,6 @@
 import fauxfactory
 import pytest
 from cfme.fixtures import pytest_selenium as sel
-from cfme.configure.configuration import Category, Tag
 from utils import error, version
 from utils.update import update
 from utils.testgen import config_managers, generate
@@ -31,26 +30,6 @@ def config_manager(config_manager_obj):
 @pytest.fixture
 def config_system(config_manager):
     return fauxfactory.gen_choice(config_manager.systems)
-
-
-@pytest.yield_fixture(scope="module")
-def category():
-    cg = Category(name=fauxfactory.gen_alpha(8).lower(),
-                  description=fauxfactory.gen_alphanumeric(length=32),
-                  display_name=fauxfactory.gen_alphanumeric(length=32))
-    cg.create()
-    yield cg
-    cg.delete()
-
-
-@pytest.yield_fixture(scope="module")
-def tag(category):
-    tag = Tag(name=fauxfactory.gen_alpha(8).lower(),
-              display_name=fauxfactory.gen_alphanumeric(length=32),
-              category=category)
-    tag.create()
-    yield tag
-    tag.delete()
 
 
 @pytest.mark.uncollectif(lambda config_manager_obj: config_manager_obj.type == "Ansible Tower" and

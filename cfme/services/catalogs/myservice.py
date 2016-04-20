@@ -75,19 +75,11 @@ class MyService(Updateable):
         self.service_name = service_name
         self.vm_name = vm_name
 
-    def get_detail(self, properties=None):
-        """ Gets details from the details infoblock
-
-        Args:
-            *ident: An InfoBlock title, followed by the Key name
-             e.g. "Relationships", "Images"
-        Returns: A string representing the contents of the InfoBlock's value.
-        """
-        return details_page.infoblock.text(*properties)
+    def _nav_to_detail(self):
+        sel.force_navigate('service', context={'service_name': self.service_name})
 
     def retire(self):
-        sel.force_navigate('service',
-                           context={'service_name': self.service_name})
+        self._nav_to_detail()
         lifecycle_btn("Retire this Service", invokes_alert=True)
         sel.handle_alert()
         flash.assert_success_message('Retirement initiated for 1 Service from the CFME Database')
@@ -96,16 +88,15 @@ class MyService(Updateable):
         sel.click(quadicon)
         detail_t = ("Power Management", "Power State")
         wait_for(
-            lambda: self.get_detail(properties=detail_t) == "off",
+            lambda: self.get_detail(*detail_t) == "off",
             fail_func=reload_func,
             num_sec=wait_time_min * 120,
             message="wait for service to retire"
         )
-        assert(self.get_detail(properties=detail_t) == "off")
+        assert(self.get_detail(*detail_t) == "off")
 
     def retire_on_date(self, retirement_date):
-        sel.force_navigate('retire_service_on_date',
-                           context={'service_name': self.service_name})
+        self._nav_to_detail()
         fill(retirement_form, {'retirement_date': retirement_date},
              action=form_buttons.save)
         wait_time_min = 1
@@ -113,12 +104,12 @@ class MyService(Updateable):
         sel.click(quadicon)
         detail_t = ("Power Management", "Power State")
         wait_for(
-            lambda: self.get_detail(properties=detail_t) == "off",
+            lambda: self.get_detail(*detail_t) == "off",
             fail_func=reload_func,
             num_sec=wait_time_min * 120,
             message="wait for service to retire"
         )
-        assert(self.get_detail(properties=detail_t) == "off")
+        assert(self.get_detail(*detail_t) == "off")
 
     def update(self, name, description):
         sel.force_navigate('edit_service',

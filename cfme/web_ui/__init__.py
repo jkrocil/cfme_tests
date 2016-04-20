@@ -51,6 +51,7 @@
 """
 
 import os
+import random
 import re
 import types
 from datetime import date
@@ -1029,6 +1030,12 @@ class PagedTable(Table):
         header_offset: See :py:class:`cfme.web_ui.Table`
         body_offset: See :py:class:`cfme.web_ui.Table`
     """
+
+    # TODO this should really be a part of Table, shouldn't it?
+    # if its not there because there are tables that inherit Table and are not paginated
+    # we should have a BaseTable that is not paginated for that, instead of doing this
+    # ...do we really have tables without pagination though?
+
     def find_row_on_all_pages(self, header, value):
         from cfme.web_ui import paginator
         for _ in paginator.pages():
@@ -2238,6 +2245,18 @@ class Quadicon(Pretty):
         for page in pages:
             for href in sel.elements("//div[@id='quadicon']/../../../tr/td/a"):
                 yield cls(cls._get_title(href), qtype)
+
+    def random(cls, qtype=None, this_page=False):
+        """Gets a random quadicon
+
+        Args:
+            qtype: Quadicon type. Refer to the constructor for reference.
+            this_page: Whether to look for Quadicons only on current page (do not list pages).
+        Returns: A random :py:class:`Quadicon`
+        """
+        filtered_quads = cls.all(qtype, this_page)
+        random_quad = random.choice(filtered_quads)
+        return random_quad
 
     @classmethod
     def first(cls, qtype=None):

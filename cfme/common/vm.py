@@ -232,7 +232,7 @@ class BaseVM(Pretty, Updateable, PolicyProfileAssignable, Taggable):
         Returns:
             :py:class:`NoneType` if the VM was never verified, otherwise :py:class:`bool`
         """
-        text = self.get_detail(properties=("Compliance", "Status")).strip().lower()
+        text = self.get_detail("Compliance", "Status").strip().lower()
         if text == "never verified":
             return None
         elif text.startswith("non-compliant"):
@@ -321,27 +321,14 @@ class BaseVM(Pretty, Updateable, PolicyProfileAssignable, Taggable):
         else:
             raise VmOrInstanceNotFound("VM '{}' not found in UI!".format(self.name))
 
-    def get_detail(self, properties=None, icon_href=False):
-        """Gets details from the details infoblock
-
-        The function first ensures that we are on the detail page for the specific VM/Instance.
-
-        Args:
-            properties: An InfoBlock title, followed by the Key name, e.g. "Relationships", "Images"
-
-        Returns:
-            A string representing the contents of the InfoBlock's value.
-        """
+    def get_detail_icon(self, *ident):
         self.load_details(refresh=True)
-        if icon_href:
-            return InfoBlock.icon_href(*properties)
-        else:
-            return InfoBlock.text(*properties)
+        return InfoBlock.icon_href(*ident)
 
-    def open_details(self, properties=None):
-        """Clicks on details infoblock"""
+    def open_details(self, *ident):
+        """Clicks on a specific details infoblock row"""
         self.load_details(refresh=True)
-        sel.click(InfoBlock(*properties))
+        sel.click(InfoBlock(*ident))
 
     @classmethod
     def get_first_vm_title(cls, do_not_navigate=False, provider=None):
@@ -356,24 +343,10 @@ class BaseVM(Pretty, Updateable, PolicyProfileAssignable, Taggable):
     @property
     def last_analysed(self):
         """Returns the contents of the ``Last Analysed`` field in summary"""
-        return self.get_detail(properties=('Lifecycle', 'Last Analyzed')).strip()
+        return self.get_detail('Lifecycle', 'Last Analyzed').strip()
 
-    def load_details(self, refresh=False):
-        """Navigates to an VM's details page.
-
-        Args:
-            refresh: Refreshes the VM page if already there
-
-        Raises:
-            VmOrInstanceNotFound:
-                When unable to find the VM passed
-        """
-        if not self.on_details():
-            logger.debug("load_details: not on details already")
-            sel.click(self.find_quadicon())
-        else:
-            if refresh:
-                toolbar.refresh()
+    def _nav_to_detail(self):
+        sel.click(self.find_quadicon())
 
     def open_edit(self):
         """Loads up the edit page of the object."""
@@ -423,7 +396,7 @@ class BaseVM(Pretty, Updateable, PolicyProfileAssignable, Taggable):
         Returns:
             :py:class:`NoneType` if there is none, or :py:class:`utils.timeutil.parsetime`
         """
-        date_str = self.get_detail(properties=("Lifecycle", "Retirement Date")).strip()
+        date_str = self.get_detail("Lifecycle", "Retirement Date").strip()
         if date_str.lower() == "never":
             return None
         return parsetime.from_american_date_only(date_str)
@@ -586,7 +559,7 @@ class VM(BaseVM):
         def _looking_for_state_change():
             if from_details:
                 self.load_details(refresh=True)
-                return self.get_detail(properties=detail_t) == desired_state
+                return self.get_detail(*detail_t) == desired_state
             else:
                 return self.find_quadicon().state == 'currentstate-' + desired_state
 

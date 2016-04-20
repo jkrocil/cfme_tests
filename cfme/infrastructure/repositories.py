@@ -8,6 +8,7 @@ from cfme.web_ui import menu
 import cfme.web_ui.toolbar as tb
 
 
+from cfme.common import GetDetailMixin
 from cfme.web_ui import Region, Form, Input, SplitCheckboxTable, fill, form_buttons, Quadicon
 from cfme.web_ui.form_buttons import FormButton
 from cfme.web_ui.paginator import pages
@@ -87,7 +88,7 @@ menu.nav.add_branch(
 )
 
 
-class Repository(Updateable, Pretty):
+class Repository(Updateable, Pretty, GetDetailMixin):
     """
     Model of an infrastructure repository in cfme.
 
@@ -106,7 +107,6 @@ class Repository(Updateable, Pretty):
     def __init__(self, name=None, path=None):
         self.name = name
         self.path = path
-        self._detail_page_identifying_loc = "//h1[contains(., '{}')]".format(self.name)
 
     def _submit(self, cancel, submit_button):
         if cancel:
@@ -155,22 +155,8 @@ class Repository(Updateable, Pretty):
             cfg_btn('Remove from the VMDB', invokes_alert=True)
             sel.handle_alert(cancel=cancel)
 
-    def get_detail(self, *ident):
-        """ Gets details from the details infoblock
-
-        The function first ensures that we are on the detail page for the specific repository.
-
-        Args:
-            *ident: An InfoBlock title, followed by the Key name, e.g. "Relationships", "Images"
-        Returns: A string representing the contents of the InfoBlock's value.
-        """
-        if not self._on_detail_page():
-            sel.force_navigate('infrastructure_repository', context={'repository': self})
-        return details_page.infoblock.text(*ident)
-
-    def _on_detail_page(self):
-        """ Returns ``True`` if on the repository detail page, ``False`` if not."""
-        return self.is_displayed(self._detail_page_identifying_loc)
+    def _nav_to_detail(self):
+        sel.force_navigate('infrastructure_repository', context={'repository': self})
 
     @property
     def exists(self):
