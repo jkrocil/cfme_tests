@@ -361,7 +361,7 @@ class Vm(BaseVM, Common):
     @property
     def total_snapshots(self):
         """Returns the number of snapshots for this VM. If it says ``None``, returns ``0``."""
-        snapshots = self.get_detail(properties=("Properties", "Snapshots")).strip().lower()
+        snapshots = self.get_detail("Properties", "Snapshots").strip().lower()
         if snapshots == "none":
             return 0
         else:

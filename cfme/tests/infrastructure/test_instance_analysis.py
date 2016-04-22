@@ -348,11 +348,11 @@ def test_ssa_template(request, local_setup_provider, provider, soft_assert):
 
     # Check release and quadricon
     quadicon_os_icon = template.find_quadicon().os
-    details_os_icon = template.get_detail(
-        properties=('Properties', 'Operating System'), icon_href=True)
+    details_os_icon = template.get_detail_icon('Properties', 'Operating System')
     logger.info("Icons: {}, {}".format(details_os_icon, quadicon_os_icon))
 
     # We shouldn't use get_detail anymore - it takes too much time
+    # UPDATE: TODO get_detail_icon here? it shouldnt navigate anymore unless necessary
     c_users = InfoBlock.text('Security', 'Users')
     c_groups = InfoBlock.text('Security', 'Groups')
     c_packages = 0
@@ -412,11 +412,11 @@ def test_ssa_vm(provider, instance, soft_assert):
 
     # Check release and quadricon
     quadicon_os_icon = instance.find_quadicon().os
-    details_os_icon = instance.get_detail(
-        properties=('Properties', 'Operating System'), icon_href=True)
+    details_os_icon = instance.get_detail_icon('Properties', 'Operating System')
     logger.info("Icons: %s, %s", details_os_icon, quadicon_os_icon)
 
     # We shouldn't use get_detail anymore - it takes too much time
+    # TODO like above
     c_lastanalyzed = InfoBlock.text('Lifecycle', 'Last Analyzed')
     c_users = InfoBlock.text('Security', 'Users')
     c_groups = InfoBlock.text('Security', 'Groups')
@@ -489,12 +489,12 @@ def test_ssa_users(provider, instance, soft_assert):
              delay=15, timeout="15m", fail_func=lambda: toolbar.select('Reload'))
 
     # Check that all data has been fetched
-    current = instance.get_detail(properties=('Security', 'Users'))
+    current = instance.get_detail('Security', 'Users')
     if instance.system_type != WINDOWS:
         assert current == expected
 
     # Make sure created user is in the list
-    instance.open_details(("Security", "Users"))
+    instance.click_detail("Security", "Users")
     if instance.system_type != WINDOWS:
         if not instance.paged_table.find_row_on_all_pages('Name', username):
             pytest.fail("User {0} was not found".format(username))
@@ -520,12 +520,12 @@ def test_ssa_groups(provider, instance, soft_assert):
              delay=15, timeout="15m", fail_func=lambda: toolbar.select('Reload'))
 
     # Check that all data has been fetched
-    current = instance.get_detail(properties=('Security', 'Groups'))
+    current = instance.get_detail('Security', 'Groups')
     if instance.system_type != WINDOWS:
         assert current == expected
 
     # Make sure created group is in the list
-    instance.open_details(("Security", "Groups"))
+    instance.click_detail("Security", "Groups")
     if instance.system_type != WINDOWS:
         if not instance.paged_table.find_row_on_all_pages('Name', group):
             pytest.fail("Group {0} was not found".format(group))
@@ -561,11 +561,11 @@ def test_ssa_packages(provider, instance, soft_assert):
              delay=15, timeout="15m", fail_func=lambda: toolbar.select('Reload'))
 
     # Check that all data has been fetched
-    current = instance.get_detail(properties=('Configuration', 'Packages'))
+    current = instance.get_detail('Configuration', 'Packages')
     assert current == expected
 
     # Make sure new package is listed
-    instance.open_details(("Configuration", "Packages"))
+    instance.click_detail("Configuration", "Packages")
     if not instance.paged_table.find_row_on_all_pages('Name', package_name):
         pytest.fail("Package {0} was not found".format(package_name))
 
@@ -582,10 +582,10 @@ def test_ssa_files(provider, instance, policy_profile, soft_assert):
              delay=15, timeout="15m", fail_func=lambda: toolbar.select('Reload'))
 
     # Check that all data has been fetched
-    current = instance.get_detail(properties=('Configuration', 'Files'))
+    current = instance.get_detail('Configuration', 'Files')
     assert current != '0', "No files were scanned"
 
-    instance.open_details(("Configuration", "Files"))
+    instance.click_detail("Configuration", "Files")
     if not instance.paged_table.find_row_on_all_pages('Name', ssa_expect_file):
         pytest.fail("File {0} was not found".format(ssa_expect_file))
 

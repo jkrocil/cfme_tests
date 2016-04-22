@@ -154,8 +154,7 @@ def test_vmware_vimapi_hotadd_disk(
     button.create()
 
     def _get_disk_count():
-        return int(testing_vm.get_detail(
-            properties=("Datastore Allocation Summary", "Number of Disks")).strip())
+        return int(testing_vm.get_detail("Datastore Allocation Summary", "Number of Disks").strip())
     original_disk_count = _get_disk_count()
     logger.info('Initial disk count: %s', original_disk_count)
     toolbar.select(testing_group.text, button.text)

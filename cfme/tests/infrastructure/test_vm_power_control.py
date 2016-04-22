@@ -164,7 +164,7 @@ class TestVmDetailsPowerControlPerProvider(object):
 
         def _wait_for_timestamp_refresh():
             vm.load_details(refresh=True)
-            return boot_time != vm.get_detail(properties=("Power Management", "Last Boot Time"))
+            return boot_time != vm.get_detail("Power Management", "Last Boot Time")
 
         try:
             wait_for(_wait_for_timestamp_refresh, num_sec=timeout, delay=30)
@@ -230,7 +230,7 @@ class TestVmDetailsPowerControlPerProvider(object):
         """
         test_vm.wait_for_vm_state_change(
             desired_state=test_vm.STATE_ON, timeout=720, from_details=True)
-        last_boot_time = test_vm.get_detail(properties=("Power Management", "Last Boot Time"))
+        last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
         register_event(
             test_vm.provider.type,
             "vm", test_vm.name, ["vm_power_off_req", "vm_power_off"])
@@ -246,8 +246,7 @@ class TestVmDetailsPowerControlPerProvider(object):
             not test_vm.provider.mgmt.is_vm_running(test_vm.name), "vm running")
         # BUG - https://bugzilla.redhat.com/show_bug.cgi?id=1101604
         if test_vm.provider.type != "rhevm":
-            new_last_boot_time = test_vm.get_detail(
-                properties=("Power Management", "Last Boot Time"))
+            new_last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
             soft_assert(new_last_boot_time == last_boot_time,
                         "ui: {} should ==  orig: {}".format(new_last_boot_time, last_boot_time))
 
@@ -262,8 +261,8 @@ class TestVmDetailsPowerControlPerProvider(object):
         register_event(
             test_vm.provider.type,
             "vm", test_vm.name, ["vm_power_on_req", "vm_power_on"])
-        last_boot_time = test_vm.get_detail(properties=("Power Management", "Last Boot Time"))
-        state_chg_time = test_vm.get_detail(properties=("Power Management", "State Changed On"))
+        last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
+        state_chg_time = test_vm.get_detail("Power Management", "State Changed On")
         self._check_power_options_when_off(soft_assert, test_vm, from_details=True)
         test_vm.power_control_from_cfme(option=test_vm.POWER_ON, cancel=False, from_details=True)
         flash.assert_message_contain("Start initiated")
@@ -275,12 +274,11 @@ class TestVmDetailsPowerControlPerProvider(object):
         self._wait_for_last_boot_timestamp_refresh(test_vm, last_boot_time, timeout=600)
         soft_assert(
             test_vm.provider.mgmt.is_vm_running(test_vm.name), "vm not running")
-        new_state_chg_time = test_vm.get_detail(properties=("Power Management", "State Changed On"))
+        new_state_chg_time = test_vm.get_detail("Power Management", "State Changed On")
         soft_assert(new_state_chg_time != state_chg_time,
                     "ui: {} ==  orig: {}".format(new_state_chg_time, state_chg_time))
         if test_vm.provider.type != "scvmm":
-            new_last_boot_time = test_vm.get_detail(
-                properties=("Power Management", "Last Boot Time"))
+            new_last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
             soft_assert(new_last_boot_time != last_boot_time,
                         "ui: {} ==  orig: {}".format(new_last_boot_time, last_boot_time))
 
@@ -292,7 +290,7 @@ class TestVmDetailsPowerControlPerProvider(object):
         """
         test_vm.wait_for_vm_state_change(
             desired_state=test_vm.STATE_ON, timeout=720, from_details=True)
-        last_boot_time = test_vm.get_detail(properties=("Power Management", "Last Boot Time"))
+        last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
         register_event(
             test_vm.provider.type,
             "vm", test_vm.name, ["vm_suspend_req", "vm_suspend"])
@@ -314,8 +312,7 @@ class TestVmDetailsPowerControlPerProvider(object):
                 test_vm.name), "vm not suspended")
         # BUG - https://bugzilla.redhat.com/show_bug.cgi?id=1101604
         if test_vm.provider.type != "rhevm":
-            new_last_boot_time = test_vm.get_detail(
-                properties=("Power Management", "Last Boot Time"))
+            new_last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
             soft_assert(new_last_boot_time == last_boot_time,
                         "ui: {} should ==  orig: {}".format(new_last_boot_time, last_boot_time))
 
@@ -338,8 +335,8 @@ class TestVmDetailsPowerControlPerProvider(object):
         register_event(
             test_vm.provider.type,
             "vm", test_vm.name, ["vm_power_on_req", "vm_power_on"])
-        last_boot_time = test_vm.get_detail(properties=("Power Management", "Last Boot Time"))
-        state_chg_time = test_vm.get_detail(properties=("Power Management", "State Changed On"))
+        last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
+        state_chg_time = test_vm.get_detail("Power Management", "State Changed On")
         self._check_power_options_when_off(soft_assert, test_vm, from_details=True)
         test_vm.power_control_from_cfme(option=test_vm.POWER_ON, cancel=False, from_details=True)
         flash.assert_message_contain("Start initiated")
@@ -351,12 +348,11 @@ class TestVmDetailsPowerControlPerProvider(object):
         self._wait_for_last_boot_timestamp_refresh(test_vm, last_boot_time, timeout=600)
         soft_assert(
             test_vm.provider.mgmt.is_vm_running(test_vm.name), "vm not running")
-        new_state_chg_time = test_vm.get_detail(properties=("Power Management", "State Changed On"))
+        new_state_chg_time = test_vm.get_detail("Power Management", "State Changed On")
         soft_assert(new_state_chg_time != state_chg_time,
                     "ui: {} should != orig: {}".format(new_state_chg_time, state_chg_time))
         if test_vm.provider.type != "scvmm":
-            new_last_boot_time = test_vm.get_detail(
-                properties=("Power Management", "Last Boot Time"))
+            new_last_boot_time = test_vm.get_detail("Power Management", "Last Boot Time")
             soft_assert(new_last_boot_time != last_boot_time,
                         "ui: {} should !=  orig: {}".format(new_last_boot_time, last_boot_time))
 

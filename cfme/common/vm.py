@@ -325,7 +325,7 @@ class BaseVM(Pretty, Updateable, PolicyProfileAssignable, Taggable):
         self.load_details(refresh=True)
         return InfoBlock.icon_href(*ident)
 
-    def open_details(self, *ident):
+    def click_detail(self, *ident):
         """Clicks on a specific details infoblock row"""
         self.load_details(refresh=True)
         sel.click(InfoBlock(*ident))

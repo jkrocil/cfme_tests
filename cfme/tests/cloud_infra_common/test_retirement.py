@@ -35,8 +35,8 @@ def vm(request, provider, setup_provider, small_template):
 
 def verify_retirement(vm):
     today = datetime.date.today()
-    get_date = partial(vm.get_detail, ["Lifecycle", "Retirement Date"])
-    get_state = partial(vm.get_detail, ["Power Management", "Power State"])
+    get_date = partial(vm.get_detail, "Lifecycle", "Retirement Date")
+    get_state = partial(vm.get_detail, "Power Management", "Power State")
 
     # wait for the info block showing a date as retired date
     def retirement_date_present():
@@ -81,6 +81,6 @@ def test_unset_retirement_date(vm):
         tomorrow = datetime.date.today() + datetime.timedelta(days=1)
         vm.set_retirement_date(tomorrow)
         vm.set_retirement_date(None)
-        assert vm.get_detail(["Lifecycle", "Retirement Date"]) == "Never"
+        assert vm.get_detail("Lifecycle", "Retirement Date") == "Never"
     finally:
         vm.retire()

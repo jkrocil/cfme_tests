@@ -118,10 +118,10 @@ def do_scan(vm, additional_item_check=None):
         vm.assign_policy_profiles(*vm.assigned_policy_profiles)
 
     def _scan():
-        return vm.get_detail(properties=("Lifecycle", "Last Analyzed")).lower()
+        return vm.get_detail("Lifecycle", "Last Analyzed").lower()
     original = _scan()
     if additional_item_check is not None:
-        original_item = vm.get_detail(properties=additional_item_check)
+        original_item = vm.get_detail(*additional_item_check)
     vm.smartstate_scan(cancel=False, from_details=True)
     flash.assert_message_contain(version.pick({
         version.LOWEST: "Smart State Analysis initiated",
@@ -132,7 +132,7 @@ def do_scan(vm, additional_item_check=None):
         num_sec=600, delay=5, fail_func=lambda: toolbar.select("Reload"))
     if additional_item_check is not None:
         wait_for(
-            lambda: vm.get_detail(properties=additional_item_check) != original_item,
+            lambda: vm.get_detail(*additional_item_check) != original_item,
             num_sec=120, delay=5, fail_func=lambda: toolbar.select("Reload"))
     logger.info("Scan finished")
 

@@ -128,7 +128,7 @@ def test_change_cpu_ram(provisioner, soft_assert, provider, prov_data):
     vm = provisioner(template_name, prov_data)
 
     # Go to the VM info
-    data = vm.get_detail(properties=("Properties", "Container")).strip()
+    data = vm.get_detail("Properties", "Container").strip()
     # No longer possible to use version pick because of cherrypicking?
     regexes = map(re.compile, [
         r"^[^(]*\((\d+) CPUs?, ([^)]+)\)[^)]*$",

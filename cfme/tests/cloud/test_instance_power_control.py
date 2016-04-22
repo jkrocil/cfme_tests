@@ -196,7 +196,7 @@ def test_soft_reboot(setup_provider_funcscope, provider, testing_instance, soft_
     """
     testing_instance.wait_for_vm_state_change(
         desired_state=testing_instance.STATE_ON, timeout=720, from_details=True)
-    state_change_time = testing_instance.get_detail(('Power Management', 'State Changed On'))
+    state_change_time = testing_instance.get_detail('Power Management', 'State Changed On')
     testing_instance.power_control_from_cfme(
         option=testing_instance.SOFT_REBOOT, cancel=False, from_details=True)
     flash.assert_message_contain(version.pick({
@@ -221,7 +221,7 @@ def test_hard_reboot(setup_provider_funcscope, provider, testing_instance, soft_
     """
     testing_instance.wait_for_vm_state_change(
         desired_state=testing_instance.STATE_ON, timeout=720, from_details=True)
-    state_change_time = testing_instance.get_detail(('Power Management', 'State Changed On'))
+    state_change_time = testing_instance.get_detail('Power Management', 'State Changed On')
     testing_instance.power_control_from_cfme(
         option=testing_instance.HARD_REBOOT, cancel=False, from_details=True)
     flash.assert_message_contain("Reset initiated")
