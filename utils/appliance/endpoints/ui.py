@@ -86,7 +86,7 @@ class CFMENavigateStep(NavigateStep):
             logger.debug(store.current_appliance.ssh_client.run_command(
                 'top -c -b -n1 -o "%MEM" | head -30').output)  # noqa
             logger.debug('Managed Providers:')
-            logger.debug(store.current_appliance.managed_providers)
+            logger.debug([prov.key for prov in store.current_appliance.managed_providers])
             quit()  # Refresh the session, forget loaded summaries, ...
             ensure_browser_open()
             self.go(_tries)

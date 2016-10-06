@@ -10,7 +10,7 @@ from utils.appliance import Appliance
 from utils.conf import cfme_data
 from utils.log import logger
 from utils.path import log_path
-from utils.providers import destroy_vm, get_mgmt
+from utils.providers import get_mgmt
 from utils.wait import wait_for
 
 
@@ -58,6 +58,26 @@ def parse_cmd_line():
 
     args = parser.parse_args()
     return args
+
+
+def destroy_vm(provider_mgmt, vm_name):
+    """Given a provider backend and VM name, destroy an instance with logging and error guards
+
+    Returns ``True`` if the VM is deleted, ``False`` if the backend reports that it did not delete
+        the VM, and ``None`` if an error occurred (the error will be logged)
+
+    """
+    try:
+        if provider_mgmt.does_vm_exist(vm_name):
+            logger.info('Destroying VM %s', vm_name)
+            vm_deleted = provider_mgmt.delete_vm(vm_name)
+            if vm_deleted:
+                logger.info('VM %s destroyed', vm_name)
+            else:
+                logger.error('Destroying VM %s failed for unknown reasons', vm_name)
+            return vm_deleted
+    except Exception as e:
+        logger.error('%s destroying VM %s (%s)', type(e).__name__, vm_name, str(e))
 
 
 def main(**kwargs):

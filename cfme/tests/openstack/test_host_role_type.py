@@ -6,7 +6,7 @@ from cfme.fixtures import pytest_selenium as sel
 import re
 
 
-pytest_generate_tests = testgen.generate(testgen.provider_by_type,
+pytest_generate_tests = testgen.generate(testgen.providers_by_type,
                                          ['openstack-infra'],
                                          scope='module')
 

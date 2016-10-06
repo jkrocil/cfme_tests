@@ -1,24 +1,43 @@
-import pytest
 from os import path as os_path
 
+import pytest
+from fauxfactory import gen_alphanumeric
+
 from cfme.login import login_admin
-from utils import version
+from fixtures.pytest_store import store
+from utils import providers, version
 from utils.blockers import BZ
 from utils.conf import cfme_data
+from utils.db import scl_name
 from utils.log import logger
 from utils.wait import wait_for
 
 
 def pytest_generate_tests(metafunc):
-    argnames, argvalues, idlist = ['db_url', 'db_version', 'db_desc', 'v2key_url'], [], []
-    db_backups = cfme_data.get('db_backups', {})
+    argnames, argvalues, idlist = ['db_url', 'db_version', 'v2key_url'], [], []
+    db_backups = cfme_data.get('new_db_backups', {})
     if not db_backups:
         return []
     for key, data in db_backups.iteritems():
         v2key_data = data.get('v2key_url', None)
-        argvalues.append((data.url, data.version, data.desc, v2key_data))
+        argvalues.append((data.url, data.version, v2key_data))
         idlist.append(key)
     return metafunc.parametrize(argnames=argnames, argvalues=argvalues, ids=idlist)
+
+
+@pytest.yield_fixture(scope="module")
+def backup_orig_db():
+    app = store.current_appliance
+    app.backup_database()
+    app.ssh_client.run_command("cp /var/www/miq/vmdb/certs/v2_key /tmp/v2_key.bak")
+    app.ssh_client.run_command("cp /var/www/miq/vmdb/GUID /tmp/GUID.bak")
+    yield
+    app.stop_evm_service()
+    app.ssh_client.run_command("mv /tmp/v2_key.bak /var/www/miq/vmdb/certs/v2_key")
+    app.ssh_client.run_command("mv /tmp/GUID.bak /var/www/miq/vmdb/GUID ")
+    app.restore_database()
+    app.start_evm_service()
+    app.wait_for_web_ui()
 
 
 @pytest.mark.ignore_stream('5.5', 'upstream')
@@ -28,19 +47,21 @@ def pytest_generate_tests(metafunc):
         db_version >= version.current_version() or
         version.get_stream(db_version) == version.current_stream())
 @pytest.mark.meta(
-    blockers=[BZ(1354466, unblock=lambda db_url: 'ldap' not in db_url)])
-def test_db_migrate(db_url, db_version, db_desc, v2key_url):
+    blockers=[
+        BZ(1354466,
+           unblock=lambda db_url: 'ldap' not in db_url.lower() and 'ipa' not in db_url.lower())])
+def test_db_migrate(db_url, db_version, v2key_url, backup_orig_db):
     """ This is a destructive test - it _will_ destroy your database """
-    app = pytest.store.current_appliance
+    app = store.current_appliance
 
     # initiate evmserverd stop
     app.stop_evm_service()
 
     # in the meantime, download the database
-    logger.info("Downloading database: {}".format(db_desc))
-    url_basename = os_path.basename(db_url)
+    logger.info("Downloading database: {}".format(db_url))
+    db_path = "/tmp/{}_{}".format(gen_alphanumeric(8), os_path.basename(db_url))
     rc, out = app.ssh_client.run_command(
-        'wget "{}" -O "/tmp/{}"'.format(db_url, url_basename), timeout=30)
+        'wget "{}" -O "{}"'.format(db_url, db_path), timeout=30)
     assert rc == 0, "Failed to download database: {}".format(out)
 
     # wait 30sec until evmserverd is down
@@ -49,16 +70,14 @@ def test_db_migrate(db_url, db_version, db_desc, v2key_url):
 
     # restart postgres to clear connections, remove old DB, restore it and migrate it
     with app.ssh_client as ssh:
-        rc, out = ssh.run_command('systemctl restart rh-postgresql94-postgresql', timeout=30)
+        rc, out = ssh.run_command('systemctl restart {}-postgresql'.format(scl_name()), timeout=30)
         assert rc == 0, "Failed to restart postgres service: {}".format(out)
         rc, out = ssh.run_command('dropdb vmdb_production', timeout=15)
         assert rc == 0, "Failed to remove old database: {}".format(out)
         rc, out = ssh.run_command('createdb vmdb_production', timeout=30)
         assert rc == 0, "Failed to create clean database: {}".format(out)
-        rc, out = ssh.run_command(
-            'pg_restore -v --dbname=vmdb_production /tmp/{}'.format(url_basename), timeout=420)
-        assert rc == 0, "Failed to restore new database: {}".format(out)
-        rc, out = ssh.run_rake_command("db:migrate", timeout=300)
+        app.restore_database(database_path=db_path)
+        rc, out = ssh.run_rake_command("db:migrate", timeout=360)
         assert rc == 0, "Failed to migrate new database: {}".format(out)
         rc, out = ssh.run_rake_command(
             'db:migrate:status 2>/dev/null | grep "^\s*down"', timeout=30)
@@ -92,9 +111,20 @@ def test_db_migrate(db_url, db_version, db_desc, v2key_url):
             rc, out = ssh.run_command("fix_auth -i invalid", timeout=45)
             assert rc == 0, "Failed to change invalid passwords: {}".format(out)
     rc, out = app.ssh_client.run_command(
-        'systemctl stop rh-postgresql94-postgresql', timeout=30)
-    assert rc == 0, "Failed to stop postgres service: {}".format(out)
+        'systemctl restart {}-postgresql'.format(scl_name()), timeout=30)
+    assert rc == 0, "Failed to restart postgres service: {}".format(out)
     # start evmserverd, wait for web UI to start and try to log in as admin
     app.start_evm_service()
-    app.wait_for_web_ui(timeout=600)
+    app.wait_for_web_ui(timeout=360)
     login_admin()
+    # if we have valid creds to existing providers, lets validate their stats through UI
+    if v2key_url:
+        provs = app.managed_known_providers(name_check=True)
+        logger.info("Checking managed providers: {}".format([p.key for p in provs]))
+        for prov in provs:
+            if 'disabled' in prov.data.tags:
+                logger.warning(
+                    "Unable to validate stats of provider '{}' because it is no longer active"
+                    .format(prov.name))
+                continue
+            prov.validate_stats(ui=True)

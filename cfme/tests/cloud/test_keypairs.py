@@ -17,7 +17,7 @@ def a_provider():
 
 
 def pytest_generate_tests(metafunc):
-    argnames, argvalues, idlist = testgen.provider_by_type(
+    argnames, argvalues, idlist = testgen.providers_by_type(
         metafunc, ['openstack'])
     testgen.parametrize(metafunc, argnames, argvalues, ids=idlist, scope='module')
 

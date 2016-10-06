@@ -13,7 +13,7 @@ from utils.wait import wait_for, TimedOutError, RefreshTimer
 
 
 def pytest_generate_tests(metafunc):
-    argnames, argvalues, idlist = testgen.provider_by_type(
+    argnames, argvalues, idlist = testgen.providers_by_type(
         metafunc, ['azure', 'ec2', 'openstack', 'gce'],
         required_fields=[('test_power_control', True)])
     testgen.parametrize(metafunc, argnames, argvalues, ids=idlist, scope="function")

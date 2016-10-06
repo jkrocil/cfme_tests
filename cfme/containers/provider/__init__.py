@@ -90,7 +90,7 @@ prop_region = Region(
 class ContainersProvider(BaseProvider, Pretty):
     provider_types = {}
     in_version = ('5.5', version.LATEST)
-    type_tclass = "container"
+    category = "container"
     pretty_attrs = ['name', 'key', 'zone']
     STATS_TO_MATCH = [
         'num_project', 'num_service', 'num_replication_controller', 'num_pod', 'num_node',

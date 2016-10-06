@@ -42,7 +42,7 @@ def vm_crud(provider, small_template):
 @pytest.mark.parametrize("from_edit", [True, False], ids=["via_edit", "via_summary"])
 @test_requirements.genealogy
 @pytest.mark.uncollectif(
-    lambda provider, from_edit: provider.type_tclass == "cloud" and not from_edit)
+    lambda provider, from_edit: provider.category == "cloud" and not from_edit)
 def test_vm_genealogy_detected(
         request, setup_provider, provider, small_template, soft_assert, from_edit, vm_crud):
     """Tests vm genealogy from what CFME can detect.

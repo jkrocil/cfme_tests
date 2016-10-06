@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import fauxfactory
 import hashlib
+import logging
 import os
 import random
 import re
@@ -257,37 +258,153 @@ class IPAppliance(object):
             ssh_client.run_command('echo "vm.swappiness = 1" >> /etc/sysctl.conf',
                 ensure_host=True)
 
+    def _encrypt_string(self, string):
+        try:
+            # Let's not log passwords
+            logging.disable(logging.CRITICAL)
+            rc, out = self.ssh_client.run_rails_command(
+                "puts MiqPassword.encrypt('{}')".format(string))
+            return out
+        finally:
+            logging.disable(logging.NOTSET)
+
+    def _get_ems_ips(self, ems):
+        ep_table = self.db["endpoints"]
+        ip_addresses = set()
+        for ep in self.db.session.query(ep_table).filter(ep_table.resource_id == ems.id):
+            if ep.ipaddress is not None:
+                ip_addresses.add(ep.ipaddress)
+            elif ep.hostname is not None:
+                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ep.hostname) is not None:
+                    ip_addresses.add(ep.hostname)
+                else:
+                    ip_address = resolve_hostname(ep.hostname)
+                    if ip_address is not None:
+                        ip_addresses.add(ip_address)
+        return list(ip_addresses)
+
+    def _encrypt_string(self, string):
+        try:
+            # Let's not log passwords
+            logging.disable(logging.CRITICAL)
+            rc, out = self.ssh_client.run_rails_command(
+                "puts MiqPassword.encrypt('{}')".format(string))
+            return out
+        finally:
+            logging.disable(logging.NOTSET)
+
+    def _get_ems_ips(self, ems):
+        ep_table = self.db["endpoints"]
+        ip_addresses = set()
+        for ep in self.db.session.query(ep_table).filter(ep_table.resource_id == ems.id):
+            if ep.ipaddress is not None:
+                ip_addresses.add(ep.ipaddress)
+            elif ep.hostname is not None:
+                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ep.hostname) is not None:
+                    ip_addresses.add(ep.hostname)
+                else:
+                    ip_address = resolve_hostname(ep.hostname)
+                    if ip_address is not None:
+                        ip_addresses.add(ip_address)
+        return list(ip_addresses)
+
+    def _encrypt_string(self, string):
+        try:
+            # Let's not log passwords
+            logging.disable(logging.CRITICAL)
+            rc, out = self.ssh_client.run_rails_command(
+                "puts MiqPassword.encrypt('{}')".format(string))
+            return out
+        finally:
+            logging.disable(logging.NOTSET)
+
+    def _get_ems_ips(self, ems):
+        ep_table = self.db["endpoints"]
+        ip_addresses = set()
+        for ep in self.db.session.query(ep_table).filter(ep_table.resource_id == ems.id):
+            if ep.ipaddress is not None:
+                ip_addresses.add(ep.ipaddress)
+            elif ep.hostname is not None:
+                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ep.hostname) is not None:
+                    ip_addresses.add(ep.hostname)
+                else:
+                    ip_address = resolve_hostname(ep.hostname)
+                    if ip_address is not None:
+                        ip_addresses.add(ip_address)
+        return list(ip_addresses)
+
     @property
     def managed_providers(self):
-        """Returns a set of providers that are managed by this appliance
+        """Returns a set of provider crud objects of known providers managed by this appliance
 
-        Returns:
-            :py:class:`set` of :py:class:`str` - provider_key-s
+        Note:
+            Provider types have different ways of identification:
+              Infra = hostname / ip
+              Cloud = credentials
+              Containers = hostname / ip
+              Middleware = hostname / ip
+
+        Warning:
+            If name of the provider on the appliance differs from name in yamls, the name from the
+            appliance is used instead so that we can interact with the provider.
         """
-        ip_addresses = set([])
-
+        ems_table = self.db["ext_management_systems"]
         # Fetch all providers at once, return empty list otherwise
         try:
-            query_res = list(self._query_endpoints())
+            found_ems = list(self.db.session.query(ems_table))
         except Exception as ex:
             self.log.warning("Unable to query DB for managed providers: %s", str(ex))
             return []
 
-        for ipaddress, hostname in query_res:
-            if ipaddress is not None:
-                ip_addresses.add(ipaddress)
-            elif hostname is not None:
-                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", hostname) is not None:
-                    ip_addresses.add(hostname)
-                else:
-                    ip_address = resolve_hostname(hostname)
-                    if ip_address is not None:
-                        ip_addresses.add(ip_address)
-        provider_keys = set([])
-        for provider_key, provider_data in conf.cfme_data.get("management_systems", {}).iteritems():
-            if provider_data.get("ipaddress", None) in ip_addresses:
-                provider_keys.add(provider_key)
-        return provider_keys
+        from utils.providers import list_providers
+        creds_table = self.db["authentications"]
+        prov_cruds = list_providers()
+        recognized_by_ip = ["InfraManager", "ContainerManager", "MiddlewareManager"]
+        recognized_by_creds = ["CloudManager"]
+        ignored_types = ["NetworkManager"]
+
+        found_cruds = set()
+        unrecognized_ems_names = set()
+        for ems in found_ems:
+            # Skip any provider types that we don't care about
+            if any(p_type in ems.type for p_type in ignored_types):
+                continue
+            found_crud = None
+            for prov in prov_cruds:
+                # Name check is authoritative
+                if ems.name == prov.name:
+                    found_crud = prov
+                # Otherwise, depends on provider type (name is potentially changed)
+                elif any(p_type in ems.type for p_type in recognized_by_ip):
+                    try:
+                        if prov.ip_address in self._get_ems_ips(ems):
+                            found_crud = prov
+                    except AttributeError:
+                        # Cloud provider with no ip address
+                        continue
+                elif any(p_type in ems.type for p_type in recognized_by_creds):
+                    try:
+                        default_creds = prov.credentials['default']
+                    except KeyError:
+                        # Provider with token or other kind of authentication, should be found by IP
+                        continue
+                    auth = self.db.session.query(creds_table)\
+                        .filter(creds_table.resource_id == ems.id)\
+                        .filter(creds_table.userid == default_creds.principal)\
+                        .filter(creds_table.password == self._encrypt_string(default_creds.secret))\
+                        .order_by(creds_table.id.desc())\
+                        .first()
+                    if auth is not None:
+                        found_crud = prov
+            if found_crud:
+                found_crud.name = ems.name
+                found_cruds.add(found_crud)
+            else:
+                unrecognized_ems_names.add(ems.name)
+        if unrecognized_ems_names:
+            self.log.warning(
+                "Unrecognized managed providers: {}".format(','.join(unrecognized_ems_names)))
+        return list(found_cruds)
 
     def _query_endpoints(self):
 
@@ -657,39 +774,32 @@ class IPAppliance(object):
         return status
 
     @logger_wrap("Backup database: {}")
-    def backup_database(self, log_callback=None):
+    def backup_database(self, database_path="/tmp/evm_db.backup", log_callback=None):
         """Backup VMDB database
 
         """
         log_callback('Backing up database')
-
-        with self.ssh_client as ssh:
-            status, output = ssh.run_rake_command(
-                'evm:db:backup:local -- --local-file /tmp/evm_db.backup --dbname vmdb_production')
-            if status != 0:
-                msg = 'Failed to backup database'
-                log_callback(msg)
-                raise ApplianceException(msg)
+        status, output = self.ssh_client.run_rake_command(
+            'evm:db:backup:local --trace -- --local-file "{}" --dbname vmdb_production'.format(
+                database_path))
+        if status != 0:
+            msg = 'Failed to backup database'
+            log_callback(msg)
+            raise ApplianceException(msg)
 
     @logger_wrap("Restore database: {}")
-    def restore_database(self, log_callback=None):
+    def restore_database(self, database_path="/tmp/evm_db.backup", log_callback=None):
         """Restore VMDB database
 
         """
         log_callback('Restoring database')
-
-        self.stop_evm_service()
-
-        with self.ssh_client as ssh:
-            status, output = ssh.run_rake_command(
-                'evm:db:restore:local -- --local-file /tmp/evm_db.backup')
-            if status != 0:
-                msg = 'Failed to restore database on appl {},output is {}'.format(self.address,
-                    output)
-                log_callback(msg)
-                raise ApplianceException(msg)
-            else:
-                self.start_evm_service()
+        status, output = self.ssh_client.run_rake_command(
+            'evm:db:restore:local --trace -- --local-file "{}"'.format(database_path))
+        if status != 0:
+            msg = 'Failed to restore database on appl {}, output is {}'.format(self.address,
+                output)
+            log_callback(msg)
+            raise ApplianceException(msg)
 
     @logger_wrap("Setup upstream DB: {}")
     def setup_upstream_db(self, log_callback=None):
@@ -1181,75 +1291,66 @@ class IPAppliance(object):
         else:
             return unsure
 
-    def is_evm_service_running(self):
-        """checks the ``evmserverd`` service status on this appliance
+    def _evm_service_command(self, command, log_callback, expected_exit_code=None):
+        """Runs given systemctl command against the ``evmserverd`` service
+
+        Args:
+            command: Command to run, e.g. "start"
+            expected_exit_code: If the exit codes don't match, ApplianceException is raised
         """
+        log_callback("Running command '{}' against the evmserverd service".format(command))
         with self.ssh_client as ssh:
-            status, output = ssh.run_command('service evmserverd status')
+            status, output = ssh.run_command('systemctl {} evmserverd'.format(command))
 
-            if status == 0:
-                msg = 'evmserverd is active(running)'.format(self.address, output)
-                self.log.info(msg)
-                return True
-            return False
+        if expected_exit_code is not None and status != expected_exit_code:
+            msg = 'Failed to {} evmserverd on {}\nError: {}'.format(command, self.address, output)
+            log_callback(msg)
+            raise ApplianceException(msg)
 
-    @logger_wrap("Restart EVM Service: {}")
-    def restart_evm_service(self, rude=False, log_callback=None):
-        """Restarts the ``evmserverd`` service on this appliance
+        return status
+
+    @logger_wrap("Status of EVM service: {}")
+    def is_evm_service_running(self, log_callback=None):
+        """Checks the ``evmserverd`` service status on this appliance
         """
-        log_callback('restarting evm service')
-        store.terminalreporter.write_line('evmserverd is being restarted, be patient please')
-        with self.ssh_client as ssh:
-            if rude:
-                status, msg = ssh.run_command(
-                    'killall -9 ruby;'
-                    'service rh-postgresql94-postgresql stop;'
-                    'service evmserverd start')
-            else:
-                status, msg = ssh.run_command('systemctl restart evmserverd')
-
-            if status != 0:
-                msg = 'Failed to restart evmserverd on {}\nError: {}'.format(self.address, msg)
-                log_callback(msg)
-                raise ApplianceException(msg)
-        self.server_details_changed()
+        return self._evm_service_command("status", log_callback=log_callback) == 0
 
     @logger_wrap("Stop EVM Service: {}")
     def stop_evm_service(self, log_callback=None):
         """Stops the ``evmserverd`` service on this appliance
         """
-        log_callback('stopping evm service')
-
-        with self.ssh_client as ssh:
-            status, output = ssh.run_command('service evmserverd stop')
-
-            if status != 0:
-                msg = 'Failed to stop evmserverd on {}\nError: {}'.format(self.address, output)
-                log_callback(msg)
-                raise ApplianceException(msg)
+        self._evm_service_command('stop', expected_exit_code=0, log_callback=log_callback)
 
     @logger_wrap("Start EVM Service: {}")
     def start_evm_service(self, log_callback=None):
         """Starts the ``evmserverd`` service on this appliance
         """
-        log_callback('starting evm service')
+        self._evm_service_command('start', expected_exit_code=0, log_callback=log_callback)
 
+    @logger_wrap("Restart EVM Service: {}")
+    def restart_evm_service(self, rude=False, log_callback=None):
+        """Restarts the ``evmserverd`` service on this appliance
+        """
+        store.terminalreporter.write_line('evmserverd is being restarted, be patient please')
         with self.ssh_client as ssh:
-            status, output = ssh.run_command('service evmserverd start')
+            if rude:
+                log_callback('restarting evm service by killing processes')
+                status, msg = ssh.run_command(
+                    'killall -9 ruby; service {}-postgresql stop'.format(db.scl_name()))
+                self._evm_service_command("start", expected_exit_code=0, log_callback=log_callback)
+            else:
+                self._evm_service_command(
+                    "restart", expected_exit_code=0, log_callback=log_callback)
+        self.server_details_changed()
 
-            if status != 0:
-                msg = 'Failed to start evmserverd on {}\nError: {}'.format(self.address, output)
-                log_callback(msg)
-                raise ApplianceException(msg)
-
-    @logger_wrap("Waiting for evmserverd: {}")
+    @logger_wrap("Waiting for EVM service: {}")
     def wait_for_evm_service(self, timeout=900, log_callback=None):
         """Waits for the evemserverd service to be running
 
         Args:
-            timeout: Number of seconds to wait until timeout (default ``600``)
+            timeout: Number of seconds to wait until timeout (default ``900``)
         """
-        (log_callback or self.log.info)('Waiting for evmserverd to be active')
+        log_callback('Waiting for evmserverd to be running')
         result, wait = wait_for(self.is_evm_service_running, num_sec=timeout,
                                 fail_condition=False, delay=10)
         return result

@@ -142,7 +142,7 @@ class InfraProvider(Pretty, CloudInfraProvider):
     """
     provider_types = {}
     in_version = (version.LOWEST, version.LATEST)
-    type_tclass = "infra"
+    category = "infra"
     pretty_attrs = ['name', 'key', 'zone']
     STATS_TO_MATCH = ['num_template', 'num_vm', 'num_datastore', 'num_host', 'num_cluster']
     string_name = "Infrastructure"

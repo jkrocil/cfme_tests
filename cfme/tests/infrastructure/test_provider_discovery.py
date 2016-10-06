@@ -52,7 +52,7 @@ def minmax_ip(providers):
 
 def pytest_generate_tests(metafunc):
     types = ['virtualcenter', 'rhevm', 'scvmm']
-    argnames, argvalues, idlist = testgen.provider_by_type(
+    argnames, argvalues, idlist = testgen.providers_by_type(
         metafunc, types)
 
     argnames = ['providers_for_discover', 'start_ip', 'max_range']
@@ -106,7 +106,7 @@ def test_discover_infra(providers_for_discover, start_ip, max_range):
     @pytest.wait_for(num_sec=count_timeout(start_ip, max_range), delay=5)
     def _wait_for_all_providers():
         for provider in providers_for_discover:
-            if provider.key not in pytest.store.current_appliance.managed_providers:
+            if provider not in pytest.store.current_appliance.managed_providers:
                 return False
         if len(pytest.store.current_appliance.managed_providers) != len(providers_for_discover):
             return False

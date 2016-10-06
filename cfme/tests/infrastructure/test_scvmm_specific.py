@@ -6,7 +6,7 @@ from cfme.common.vm import VM
 from utils import testgen
 
 
-pytest_generate_tests = testgen.generate(testgen.provider_by_type, ['scvmm'],
+pytest_generate_tests = testgen.generate(testgen.providers_by_type, ['scvmm'],
     scope="module")
 
 

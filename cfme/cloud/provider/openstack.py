@@ -26,13 +26,10 @@ class OpenStackProvider(CloudProvider):
     def create(self, *args, **kwargs):
         # Override the standard behaviour to actually create the underlying infra first.
         if self.infra_provider is not None:
-            if isinstance(self.infra_provider, OpenstackInfraProvider):
-                infra_provider_name = self.infra_provider.name
-            else:
-                infra_provider_name = str(self.infra_provider)
-            from utils.providers import setup_provider_by_name
-            setup_provider_by_name(
-                infra_provider_name, validate=True, check_existing=True)
+            from utils.providers import setup_provider, get_crud_by_name
+            if not isinstance(self.infra_provider, OpenstackInfraProvider):
+                self.infra_provider = get_crud_by_name(self.infra_provider)
+            setup_provider(self.infra_provider.key, validate=True, check_existing=True)
         if current_version() >= "5.6" and 'validate_credentials' not in kwargs:
             # 5.6 requires validation, so unless we specify, we want to validate
             kwargs['validate_credentials'] = True

@@ -5,7 +5,7 @@ from utils import testgen
 from utils.appliance.endpoints.ui import navigate_to
 
 
-pytest_generate_tests = testgen.generate(testgen.provider_by_type,
+pytest_generate_tests = testgen.generate(testgen.providers_by_type,
                                          ['openstack-infra'],
                                          scope='module')
 
