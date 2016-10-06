@@ -5,7 +5,7 @@ from fauxfactory import gen_alphanumeric
 
 from cfme.login import login_admin
 from fixtures.pytest_store import store
-from utils import providers, version
+from utils import version
 from utils.blockers import BZ
 from utils.conf import cfme_data
 from utils.db import scl_name

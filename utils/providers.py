@@ -293,7 +293,7 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
                 store.terminalreporter.write_line(
                     "Trying to set up provider {}\n".format(provider.key), green=True)
             return setup_provider(validate_credentials=True, validate_inventory=validate,
-                                   check_existing=check_existing)
+                                  check_existing=check_existing)
         except Exception as e:
             # In case of a known provider error:
             logger.exception(e)

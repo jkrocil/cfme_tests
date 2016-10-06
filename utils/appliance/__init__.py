@@ -283,56 +283,6 @@ class IPAppliance(object):
                         ip_addresses.add(ip_address)
         return list(ip_addresses)
 
-    def _encrypt_string(self, string):
-        try:
-            # Let's not log passwords
-            logging.disable(logging.CRITICAL)
-            rc, out = self.ssh_client.run_rails_command(
-                "puts MiqPassword.encrypt('{}')".format(string))
-            return out
-        finally:
-            logging.disable(logging.NOTSET)
-
-    def _get_ems_ips(self, ems):
-        ep_table = self.db["endpoints"]
-        ip_addresses = set()
-        for ep in self.db.session.query(ep_table).filter(ep_table.resource_id == ems.id):
-            if ep.ipaddress is not None:
-                ip_addresses.add(ep.ipaddress)
-            elif ep.hostname is not None:
-                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ep.hostname) is not None:
-                    ip_addresses.add(ep.hostname)
-                else:
-                    ip_address = resolve_hostname(ep.hostname)
-                    if ip_address is not None:
-                        ip_addresses.add(ip_address)
-        return list(ip_addresses)
-
-    def _encrypt_string(self, string):
-        try:
-            # Let's not log passwords
-            logging.disable(logging.CRITICAL)
-            rc, out = self.ssh_client.run_rails_command(
-                "puts MiqPassword.encrypt('{}')".format(string))
-            return out
-        finally:
-            logging.disable(logging.NOTSET)
-
-    def _get_ems_ips(self, ems):
-        ep_table = self.db["endpoints"]
-        ip_addresses = set()
-        for ep in self.db.session.query(ep_table).filter(ep_table.resource_id == ems.id):
-            if ep.ipaddress is not None:
-                ip_addresses.add(ep.ipaddress)
-            elif ep.hostname is not None:
-                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ep.hostname) is not None:
-                    ip_addresses.add(ep.hostname)
-                else:
-                    ip_address = resolve_hostname(ep.hostname)
-                    if ip_address is not None:
-                        ip_addresses.add(ip_address)
-        return list(ip_addresses)
-
     @property
     def managed_providers(self):
         """Returns a set of provider crud objects of known providers managed by this appliance
