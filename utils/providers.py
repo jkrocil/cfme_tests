@@ -9,7 +9,9 @@ you with whatever you ask for with no limitations.
 
 The main clue to know what is limited by the filters and what isn't is the 'filters' parameter.
 """
+import operator
 import random
+import six
 from collections import Mapping, OrderedDict
 from copy import copy
 
@@ -41,12 +43,12 @@ class ProviderFilter(object):
         required_tags: List of tags that must be set in yamls
         inverted: Inclusive if `False`, exclusive otherwise
     """
-    _version_operator_map = OrderedDict([('>=', lambda o, v: o >= v),
-                                        ('<=', lambda o, v: o <= v),
-                                        ('==', lambda o, v: o == v),
-                                        ('!=', lambda o, v: o != v),
-                                        ('>', lambda o, v: o > v),
-                                        ('<', lambda o, v: o < v)])
+    _version_operator_map = OrderedDict([('>=', operator.ge),
+                                        ('<=', operator.le),
+                                        ('==', operator.eq),
+                                        ('!=', operator.ne),
+                                        ('>', operator.gt),
+                                        ('<', operator.lt)])
 
     def __init__(self, keys=None, categories=None, types=None, required_fields=None,
                  restrict_version=True, required_tags=None, inverted=False):
@@ -61,7 +63,7 @@ class ProviderFilter(object):
     def _filter_restricted_version(self, provider):
         restricted_version = provider.data.get('restricted_version', None)
         if restricted_version:
-            logger.info('we found a restricted version')
+            logger.info('we found a restricted version: %s', restricted_version)
             for op, comparator in ProviderFilter._version_operator_map.items():
                 # split string by op; if the split works, version won't be empty
                 head, op, ver = restricted_version.partition(op)
@@ -80,7 +82,7 @@ class ProviderFilter(object):
                 field_ident, field_value = field_or_fields
             else:
                 field_ident, field_value = field_or_fields, None
-            if isinstance(field_ident, basestring):
+            if isinstance(field_ident, six.string_types):
                 if field_ident not in provider.data:
                     return False
                 else:
@@ -107,7 +109,7 @@ class ProviderFilter(object):
     def _filter_test_flags(self, provider, test_flags):
         # check to make sure the provider contains that test_flag
         # if not, do not collect the provider for this particular test.
-        if test_flags and test_flags != ['']:
+        if test_flags and not test_flags[0]:
             test_flags = [flag.strip() for flag in test_flags]
 
             defined_flags = conf.cfme_data.get('test_flags', '').split(',')
@@ -154,13 +156,13 @@ class ProviderFilter(object):
             The result is opposite if the 'inverted' attribute is set to `True`.
         """
         if self.keys and provider.key not in self.keys or \
-           self.categories is not None and provider.category not in self.categories or \
-           self.types is not None and provider.type not in self.types or \
-           self.required_fields and not self._filter_required_fields(provider,
-                                                                     self.required_fields) or \
-           self.restrict_version and not self._filter_restricted_version(provider) or \
-           self.required_tags and not self._filter_tags(provider, self.required_tags) or \
-           self.rejected_tags and self._filter_tags(provider, self.rejected_tags):
+                self.categories is not None and provider.category not in self.categories or \
+                self.types is not None and provider.type not in self.types or \
+                self.required_fields and not self._filter_required_fields(provider,
+                                                                          self.required_fields) or \
+                self.restrict_version and not self._filter_restricted_version(provider) or \
+                self.required_tags and not self._filter_tags(provider, self.required_tags) or \
+                self.rejected_tags and self._filter_tags(provider, self.rejected_tags):
             return self.inverted
         return not self.inverted
 
@@ -381,7 +383,7 @@ def get_mgmt(provider_key, providers=None, credentials=None):
     # Let the provider do whatever they need with them
     provider_kwargs = provider_data.copy()
     provider_kwargs.update(credentials)
-    if isinstance(provider_key, basestring):
+    if isinstance(provider_key, six.string_types):
         provider_kwargs['provider_key'] = provider_key
     provider_kwargs['logger'] = logger
 

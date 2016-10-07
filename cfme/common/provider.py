@@ -134,9 +134,7 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
         return hash(self.key) ^ hash(type(self))
 
     def __eq__(self, other):
-        if isinstance(other, type(self)) and self.key == other.key:
-            return True
-        return False
+        return type(self) is type(other) and self.key == other.key
 
     @property
     def properties_form(self):

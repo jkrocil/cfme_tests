@@ -1091,7 +1091,7 @@ def force_navigate(page_name, _tries=0, *args, **kwargs):
             logger.debug(store.current_appliance.ssh_client.run_command(
                 'top -c -b -n1 -o "%MEM" | head -30').output)  # noqa
         logger.debug('Managed Providers:')
-        logger.debug([prov.key for prov in store.current_appliance.managed_providers])
+        logger.debug('%r', [prov.key for prov in store.current_appliance.managed_providers])
         quit()  # Refresh the session, forget loaded summaries, ...
         kwargs.pop("start", None)
         ensure_browser_open()
