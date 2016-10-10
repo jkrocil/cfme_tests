@@ -37,8 +37,7 @@ class ProviderFilter(object):
         keys: List of acceptable provider keys, all if `None`
         categories: List of acceptable provider categories, all if `None`
         types: List of acceptable provider types, all if `None`
-        required_fields: List of required fields,
-                         see :py:func:`providers_by_type`
+        required_fields: List of required fields, see :py:func:`providers_by_type`
         restrict_version: Checks provider version in yamls if `True`
         required_tags: List of tags that must be set in yamls
         inverted: Inclusive if `False`, exclusive otherwise
@@ -51,33 +50,26 @@ class ProviderFilter(object):
                                         ('<', operator.lt)])
 
     def __init__(self, keys=None, categories=None, types=None, required_fields=None,
-                 restrict_version=True, required_tags=None, inverted=False):
+                 required_tags=None, restrict_version=True, inverted=False):
         self.keys = keys
         self.categories = categories
         self.types = types
-        self.required_fields = required_fields
+        self.required_fields = required_fields or []
+        self.required_tags = required_tags or []
         self.restrict_version = restrict_version
-        self.required_tags = required_tags
         self.inverted = inverted
 
-    def _filter_restricted_version(self, provider):
-        restricted_version = provider.data.get('restricted_version', None)
-        if restricted_version:
-            logger.info('we found a restricted version: %s', restricted_version)
-            for op, comparator in ProviderFilter._version_operator_map.items():
-                # split string by op; if the split works, version won't be empty
-                head, op, ver = restricted_version.partition(op)
-                if not ver:  # This means that the operator was not found
-                    continue
-                if not comparator(version.current_version(), ver):
-                    return False
-                break
-            else:
-                raise Exception('Operator not found in {}'.format(restricted_version))
-        return True
+    def _filter_keys(self, provider):
+        return self.keys is None or provider.key in self.keys
 
-    def _filter_required_fields(self, provider, required_fields):
-        for field_or_fields in required_fields:
+    def _filter_categories(self, provider):
+        return self.categories is None or provider.category in self.categories
+
+    def _filter_types(self, provider):
+        return self.types is None or provider.type in self.types
+
+    def _filter_required_fields(self, provider):
+        for field_or_fields in self.required_fields:
             if isinstance(field_or_fields, tuple):
                 field_ident, field_value = field_or_fields
             else:
@@ -101,16 +93,46 @@ class ProviderFilter(object):
                     return False
         return True
 
-    def _filter_tags(self, provider, tags):
-        if set(tags) & set(provider.data.tags):
+    def _filter_required_tags(self, provider):
+        if not self.required_tags or (set(self.required_tags) & set(provider.data.tags)):
             return True
         return False
 
-    def _filter_test_flags(self, provider, test_flags):
-        # check to make sure the provider contains that test_flag
-        # if not, do not collect the provider for this particular test.
-        if test_flags and not test_flags[0]:
-            test_flags = [flag.strip() for flag in test_flags]
+    def _filter_restricted_version(self, provider):
+        if self.restrict_version:
+            # TODO
+            # get rid of this since_version hotfix by translating since_version
+            # to restricted_version; in addition, restricted_version should turn into
+            # "version_restrictions" and it should be a sequence of restrictions with operators
+            # so that we can combine >stuff like >= 5.6 and at the same time <=5.8
+            version_restrictions = []
+            since_version = provider.data.get('since_version', None)
+            if since_version:
+                version_restrictions.append('>= {}'.format(since_version))
+            restricted_version = provider.data.get('restricted_version', None)
+            if restricted_version:
+                version_restrictions.append(restricted_version)
+            for restriction in version_restrictions:
+                logger.info('we found a restricted version: %s', restriction)
+                for op, comparator in ProviderFilter._version_operator_map.items():
+                    # split string by op; if the split works, version won't be empty
+                    head, op, ver = restriction.partition(op)
+                    if not ver:  # This means that the operator was not found
+                        continue
+                    try:
+                        curr_ver = version.current_version()
+                    except Exception:  # No SSH connection
+                        return False
+                    if not comparator(curr_ver, ver):
+                        return False
+                    break
+                else:
+                    raise Exception('Operator not found in {}'.format(restriction))
+        return True
+
+    def _filter_test_flags(self, provider):
+        if self.test_flags and not self.test_flags[0]:
+            test_flags = [flag.strip() for flag in self.test_flags]
 
             defined_flags = conf.cfme_data.get('test_flags', '').split(',')
             defined_flags = [flag.strip() for flag in defined_flags]
@@ -123,19 +145,9 @@ class ProviderFilter(object):
             if set(test_flags) - allowed_flags:
                 logger.info("Filtering Provider %s out because it does not have the right flags, "
                             "%s does not contain %s",
-                            provider.data['name'], list(allowed_flags),
+                            provider.name, list(allowed_flags),
                             list(set(test_flags) - allowed_flags))
                 return False
-        return True
-
-    def _filter_by_version(self, provider):
-        try:
-            if "since_version" in provider.data:
-                # Ignore providers that are not supported in this version yet
-                if version.current_version() < provider.data["since_version"]:
-                    return False
-        except Exception:  # No SSH connection
-            return False
         return True
 
     def __call__(self, provider):
@@ -155,14 +167,14 @@ class ProviderFilter(object):
             `True` if provider passed all checks and was not filtered out, `False` otherwise.
             The result is opposite if the 'inverted' attribute is set to `True`.
         """
-        if self.keys and provider.key not in self.keys or \
-                self.categories is not None and provider.category not in self.categories or \
-                self.types is not None and provider.type not in self.types or \
-                self.required_fields and not self._filter_required_fields(provider,
-                                                                          self.required_fields) or \
-                self.restrict_version and not self._filter_restricted_version(provider) or \
-                self.required_tags and not self._filter_tags(provider, self.required_tags) or \
-                self.rejected_tags and self._filter_tags(provider, self.rejected_tags):
+        keys_l = self._filter_keys(provider)
+        categories_l = self._filter_categories(provider)
+        types_l = self._filter_types(provider)
+        fields_l = self._filter_required_fields(provider)
+        version_l = self._filter_restricted_version(provider)
+        tags_l = self._filter_required_tags(provider)
+        test_flags_l = self.filter_test_flags(provider)
+        if any([keys_l, categories_l, types_l, fields_l, version_l, tags_l, test_flags_l]):
             return self.inverted
         return not self.inverted
 
@@ -245,17 +257,41 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
     Does some counter-badness measures.
 
     Args:
-        filters: List if :py:class:`ProviderFilter` or None
+        filters: List if :py:class:`ProviderFilter` or None; infra providers by default
         use_global_filters: Will apply global filters as well if `True`, will not otherwise
         validate: Whether to validate the provider.
         check_existing: Whether to check if the provider already exists.
     """
     # TODO
-    providers = list_providers(filters=filters)
+    # required keys, get rid of it where found
+
+    if filters is None:
+        filters = [ProviderFilter(categories=['infra'])]
+
+    providers = list_providers(filters=filters, use_global_filters=use_global_filters)
+    if not providers:
+        raise Exception("All providers have been filtered out, cannot setup any providers")
+
+    # If there is a provider already set up matching the requirements, reuse it and return
+    for provider in providers:
+        if provider.exists:
+            return provider
+
+    problematic_filter = global_filters.get('problematic', None)
+    if problematic_filter is None:
+        problematic_filter = ProviderFilter(keys=[], inverted=True)
+    filters.append(problematic_filter)
+
+    # Non-problematic first; if there are none left, reset problematic
+    providers = list_providers(filters=filters, use_global_filters=True)
+    if not providers:
+        problematic_filter.keys = []
+
+    # If we have more than a single provider, try to pick one which doesnt have the do_not_prefer
+    # flag set
+
     # If we didn't find any nonproblematic providers but we would have found some had we
     # included the problematic ones as well, we gotta clear the list of problematic providers
-    problematic_filter = global_filters.get('problematic')
-    # if not problematic, blabla TODO
     if not providers and provider_filter.ignore_problematic:
         tmp_filter = provider_filter.copy()
         tmp_filter.ignore_problematic = False
@@ -280,15 +316,15 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
             providers = filtered_providers
 
     # If there is already a suitable provider, don't try to setup a new one.
-    already_existing = [prov for prov in providers if prov.exists]
-    random.shuffle(already_existing)        # Make the provider load more even by random chaice.
-    not_already_existing = [prov for prov in providers if not prov.exists]
-    random.shuffle(not_already_existing)    # Make the provider load more even by random chaice.
+    existing = [prov for prov in providers if prov.exists]
+    random.shuffle(existing)        # Make the provider load more even by random chaice.
+    non_existing = [prov for prov in providers if not prov.exists]
+    random.shuffle(non_existing)    # Make the provider load more even by random chaice.
 
     # So, make this one loop and it tries the existing providers first, then the nonexisting
-    for provider in already_existing + not_already_existing:
+    for provider in existing + non_existing:
         try:
-            if provider in already_existing:
+            if provider in existing:
                 store.terminalreporter.write_line(
                     "Trying to reuse provider {}\n".format(provider.key), green=True)
             else:
@@ -314,6 +350,8 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
                 store.terminalreporter.write_line(message + "\n", red=True)
     else:
         raise Exception("No providers could be set up matching the params")
+
+    return provider
 
 
 def get_crud(provider_key):

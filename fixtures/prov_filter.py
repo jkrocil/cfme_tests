@@ -1,7 +1,5 @@
 from utils.log import logger
-from utils.providers import (
-    ProviderFilter, list_providers, global_filters, get_crud
-)
+from utils.providers import ProviderFilter, list_providers, global_filters
 
 
 def pytest_addoption(parser):
@@ -22,27 +20,8 @@ def pytest_configure(config):
     if not cmd_filter:
         cmd_filter = ["default"]
 
-    new_filter = parse_filter(cmd_filter)
+    new_filter = ProviderFilter(keys=cmd_filter, required_tags=cmd_filter)
     global_filters['use_provider'] = new_filter
 
     logger.debug('Filtering providers with {}, leaves {}'.format(
-        cmd_filter, [p.key for p in list_providers()]))
-
-
-def parse_filter(cmd_filter):
-    """ Parse a list of command line filters and return a filtered set of providers.
-
-    Args:
-        cmd_filter: A list of ``--use-provider`` options.
-
-    Returns:
-        A :py:class:`utils.providers.ProviderFilter`.
-    """
-    try:
-        # It's a key!
-        get_crud(cmd_filter)
-        pf = ProviderFilter(keys=[cmd_filter])
-    except KeyError:
-        # It's a list of tags!
-        pf = ProviderFilter(required_tags=cmd_filter)
-    return pf
+        cmd_filter, [p.key for p in list_providers(use_global_filters=True)]))
