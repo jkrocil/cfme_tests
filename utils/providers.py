@@ -104,7 +104,7 @@ class ProviderFilter(object):
             # get rid of this since_version hotfix by translating since_version
             # to restricted_version; in addition, restricted_version should turn into
             # "version_restrictions" and it should be a sequence of restrictions with operators
-            # so that we can combine >stuff like >= 5.6 and at the same time <=5.8
+            # so that we can create ranges like ">= 5.6" and "<= 5.8"
             version_restrictions = []
             since_version = provider.data.get('since_version', None)
             if since_version:
@@ -174,9 +174,10 @@ class ProviderFilter(object):
         version_l = self._filter_restricted_version(provider)
         tags_l = self._filter_required_tags(provider)
         test_flags_l = self.filter_test_flags(provider)
-        if any([keys_l, categories_l, types_l, fields_l, version_l, tags_l, test_flags_l]):
-            return self.inverted
-        return not self.inverted
+        # If all filters return true, the provider passed through unscathed and was not blocked
+        if all([keys_l, categories_l, types_l, fields_l, version_l, tags_l, test_flags_l]):
+            return not self.inverted
+        return self.inverted
 
     def copy(self):
         return copy(self)
@@ -263,8 +264,7 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
         check_existing: Whether to check if the provider already exists.
     """
     # TODO
-    # required keys, get rid of it where found
-
+    # required_keys, get rid of it where found
     if filters is None:
         filters = [ProviderFilter(categories=['infra'])]
 
@@ -272,64 +272,47 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
     if not providers:
         raise Exception("All providers have been filtered out, cannot setup any providers")
 
-    # If there is a provider already set up matching the requirements, reuse it and return
+    # If there is a provider already set up matching the user's requirements, reuse it
     for provider in providers:
         if provider.exists:
             return provider
 
-    problematic_filter = global_filters.get('problematic', None)
-    if problematic_filter is None:
-        problematic_filter = ProviderFilter(keys=[], inverted=True)
-    filters.append(problematic_filter)
+    # Activate the 'nonproblematic' filter to filter out problematic providers (if any)
+    nonproblematic_filter = global_filters.get('problematic', None)
+    if nonproblematic_filter is None:
+        nonproblematic_filter = ProviderFilter(keys=[], inverted=True)
+    filters.append(nonproblematic_filter)
 
-    # Non-problematic first; if there are none left, reset problematic
-    providers = list_providers(filters=filters, use_global_filters=True)
-    if not providers:
-        problematic_filter.keys = []
+    # If there are no non-problematic providers, reset the filter
+    nonproblematic_providers = list_providers(filters=filters, use_global_filters=True)
+    if not nonproblematic_providers:
+        nonproblematic_filter.keys = []
+        store.terminalreporter.write_line(
+            "Reached the point where all possible providers forthis case are marked as bad. "
+            "Clearing the bad provider list for a fresh start and next chance.", yellow=True)
+    # Otherwise, make non-problematic the new cool
+    else:
+        providers = nonproblematic_providers
 
-    # If we have more than a single provider, try to pick one which doesnt have the do_not_prefer
-    # flag set
-
-    # If we didn't find any nonproblematic providers but we would have found some had we
-    # included the problematic ones as well, we gotta clear the list of problematic providers
-    if not providers and provider_filter.ignore_problematic:
-        tmp_filter = provider_filter.copy()
-        tmp_filter.ignore_problematic = False
-        if list_providers(provider_filter=tmp_filter):
-            problematic_providers.clear()
-            store.terminalreporter.write_line(
-                "Reached the point where all possible providers forthis case are marked as bad. "
-                "Clearing the bad provider list for a fresh start and next chance.", yellow=True)
-
-    # If there is a provider that we want to specifically avoid ...
-    # If there is only a single provider, then do not do any filtering
-    # Specify `do_not_prefer` in provider's yaml to make it an object of avoidance.
+    # If we have more than one provider, try to pick one that doesnt have the do_not_prefer flag set
     if len(providers) > 1:
-        tmp_filter = provider_filter.copy()
-        filtered_providers = [
-            provider
-            for provider
-            in providers
-            if not provider.data.get("do_not_prefer", False)]
-        if filtered_providers:
-            # If our filtering yielded any providers, use them, otherwise do not bother with that
-            providers = filtered_providers
+        do_not_prefer_filter = ProviderFilter(required_fields=[("do_not_prefer", False)],
+                                              inverted=True)
+        # If we find any providers without the 'do_not_prefer' flag, add  the filter to the list
+        # of active filters and make preferred providers the new cool
+        preferred_providers = list_providers(filters=filters + [do_not_prefer_filter],
+                                             use_global_filters=True)
+        if preferred_providers:
+            filters.append(do_not_prefer_filter)
+            providers = preferred_providers
 
-    # If there is already a suitable provider, don't try to setup a new one.
-    existing = [prov for prov in providers if prov.exists]
-    random.shuffle(existing)        # Make the provider load more even by random chaice.
+    # Try to set up a nonexisting provider (return if successful, otherwise try another)
     non_existing = [prov for prov in providers if not prov.exists]
-    random.shuffle(non_existing)    # Make the provider load more even by random chaice.
-
-    # So, make this one loop and it tries the existing providers first, then the nonexisting
-    for provider in existing + non_existing:
+    random.shuffle(non_existing)  # Make the provider load even (long-term) by shuffling them around
+    for provider in non_existing:
         try:
-            if provider in existing:
-                store.terminalreporter.write_line(
-                    "Trying to reuse provider {}\n".format(provider.key), green=True)
-            else:
-                store.terminalreporter.write_line(
-                    "Trying to set up provider {}\n".format(provider.key), green=True)
+            store.terminalreporter.write_line(
+                "Trying to set up provider {}\n".format(provider.key), green=True)
             return setup_provider(validate_credentials=True, validate_inventory=validate,
                                   check_existing=check_existing)
         except Exception as e:
@@ -339,7 +322,7 @@ def setup_a_provider(filters=None, use_global_filters=True, validate=True, check
                 provider.key, type(e).__name__, str(e))
             logger.warning(message)
             store.terminalreporter.write_line(message + "\n", red=True)
-            problematic_providers.add(provider)
+            global_filters.problematic.keys.append(provider.key)
             if provider.exists:
                 # Remove it in order to not explode on next calls
                 provider.delete(cancel=False)
