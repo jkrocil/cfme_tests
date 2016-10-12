@@ -52,7 +52,7 @@ def minmax_ip(providers):
 
 def pytest_generate_tests(metafunc):
     types = ['virtualcenter', 'rhevm', 'scvmm']
-    argnames, argvalues, idlist = testgen.providers_by_type(
+    argnames, argvalues, idlist = testgen.provider_by_type(
         metafunc, types)
 
     argnames = ['providers_for_discover', 'start_ip', 'max_range']

@@ -25,7 +25,7 @@ pytestmark = [
 ]
 
 
-pytest_generate_tests = testgen.generate(testgen.providers_by_type, ['virtualcenter'],
+pytest_generate_tests = testgen.generate(testgen.provider_by_type, ['virtualcenter'],
     scope="module")
 
 

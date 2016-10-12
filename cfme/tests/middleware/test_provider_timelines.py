@@ -12,7 +12,7 @@ pytestmark = [
     pytest.mark.usefixtures('setup_provider'),
     pytest.mark.uncollectif(lambda: current_version() < '5.7'),
 ]
-pytest_generate_tests = testgen.generate(testgen.providers_by_type, ["hawkular"], scope="function")
+pytest_generate_tests = testgen.generate(testgen.provider_by_type, ["hawkular"], scope="function")
 
 
 def test_load_deployment_timelines(provider):

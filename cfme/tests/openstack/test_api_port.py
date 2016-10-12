@@ -5,7 +5,7 @@ import pytest
 pytestmark = [pytest.mark.meta(server_roles='+smartproxy +smartstate')]
 
 
-pytest_generate_tests = testgen.generate(testgen.providers_by_type,
+pytest_generate_tests = testgen.generate(testgen.provider_by_type,
                                          ['openstack-infra'],
                                          scope='module')
 

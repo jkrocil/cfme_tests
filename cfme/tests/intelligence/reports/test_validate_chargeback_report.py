@@ -25,7 +25,7 @@ pytestmark = [
 
 def pytest_generate_tests(metafunc):
     # Filter out providers not meant for Chargeback Testing
-    argnames, argvalues, idlist = testgen.providers_by_type(metafunc, ['virtualcenter', 'rhevm'],
+    argnames, argvalues, idlist = testgen.provider_by_type(metafunc, ['virtualcenter', 'rhevm'],
         required_fields=[(['cap_and_util', 'test_chargeback'], True)]
     )
 

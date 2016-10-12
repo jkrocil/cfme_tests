@@ -560,10 +560,10 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
                 invokes_alert=True)
             sel.handle_alert()
             if validate:
-                prov_class.wait_for_no_providers_by_type(prov_class)
+                prov_class.wait_for_no_provider_by_type(prov_class)
 
     @staticmethod
-    def wait_for_no_providers_by_type(prov_class):
+    def wait_for_no_provider_by_type(prov_class):
         navigate_to(prov_class, 'All')
         logger.debug('Waiting for all {} providers to disappear...'.format(prov_class.category))
         wait_for(
@@ -586,7 +586,7 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
                 if prov_class.in_version[0] < version.current_version() < prov_class.in_version[1]:
                     op(prov_class)
         do_for_provider_types(partial(BaseProvider.clear_provider_by_type, validate=False))
-        do_for_provider_types(BaseProvider.wait_for_no_providers_by_type)
+        do_for_provider_types(BaseProvider.wait_for_no_provider_by_type)
 
 
 def get_paginator_value():

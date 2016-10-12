@@ -5,7 +5,7 @@ from cfme.configure.tasks import is_host_analysis_finished
 from utils.wait import wait_for
 import pytest
 
-pytest_generate_tests = testgen.generate(testgen.providers_by_type,
+pytest_generate_tests = testgen.generate(testgen.provider_by_type,
                                          ['openstack-infra'], scope='module')
 pytestmark = [pytest.mark.usefixtures("setup_provider_modscope")]
 

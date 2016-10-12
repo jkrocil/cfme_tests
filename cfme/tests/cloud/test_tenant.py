@@ -5,7 +5,7 @@ import pytest
 from cfme.cloud.tenant import Tenant
 from utils import testgen
 
-pytest_generate_tests = testgen.generate(testgen.providers_by_type, ['openstack'], scope='module')
+pytest_generate_tests = testgen.generate(testgen.provider_by_type, ['openstack'], scope='module')
 
 
 @pytest.fixture

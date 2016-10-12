@@ -8,7 +8,7 @@ from utils import mgmt_system, testgen
 
 pytestmark = [test_requirements.provision]
 
-pytest_generate_tests = testgen.generate(testgen.providers_by_type, ['virtualcenter', 'rhevm'],
+pytest_generate_tests = testgen.generate(testgen.provider_by_type, ['virtualcenter', 'rhevm'],
     scope="module")
 
 

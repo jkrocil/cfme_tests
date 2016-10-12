@@ -30,7 +30,7 @@ def pytest_generate_tests(metafunc):
     new_idlist = []
     new_argvalues = []
 
-    argnames, argvalues, idlist = testgen.providers_by_type(
+    argnames, argvalues, idlist = testgen.provider_by_type(
         metafunc, PROVIDER_TYPES, required_fields=['datastores'])
     argnames += ['datastore']
 

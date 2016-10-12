@@ -17,7 +17,7 @@ pytestmark = [
 
 def pytest_generate_tests(metafunc):
     # Filter out providers without provisioning data or hosts defined
-    argnames, argvalues, idlist = testgen.providers_by_type(metafunc, ['rhevm'],
+    argnames, argvalues, idlist = testgen.provider_by_type(metafunc, ['rhevm'],
         required_fields=[
             ['provisioning', 'ci-template'],
             ['provisioning', 'ci-username'],

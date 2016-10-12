@@ -14,7 +14,7 @@ pytestmark = [
 
 
 def pytest_generate_tests(metafunc):
-    argnames, argvalues, idlist = testgen.providers_by_type(metafunc, ['ec2'])
+    argnames, argvalues, idlist = testgen.provider_by_type(metafunc, ['ec2'])
     testgen.parametrize(metafunc, argnames, argvalues, ids=idlist, scope='module')
 
 

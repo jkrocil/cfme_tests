@@ -21,7 +21,7 @@ from cfme.containers import provider as container_providers  # NOQA
 from cfme.cloud import provider as cloud_providers  # NOQA
 from cfme.exceptions import UnknownProviderType
 from cfme.infrastructure import provider as infrastructure_providers  # NOQA
-from cfme.infrastructure.provider import Provider as InfraProvider
+from cfme.infrastructure.provider import InfraProvider
 from cfme.middleware import provider as middleware_providers  # NOQA
 from utils import conf, version
 from utils.log import logger
@@ -38,7 +38,7 @@ class ProviderFilter(object):
         keys: List of acceptable provider keys, all if `None`
         categories: List of acceptable provider categories, all if `None`
         types: List of acceptable provider types, all if `None`
-        required_fields: List of required fields, see :py:func:`providers_by_type`
+        required_fields: List of required fields, see :py:func:`provider_by_type`
         restrict_version: Checks provider version in yamls if `True`
         required_tags: List of tags that must be set in yamls
         inverted: Inclusive if `False`, exclusive otherwise
