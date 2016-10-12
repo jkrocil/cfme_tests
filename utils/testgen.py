@@ -172,8 +172,17 @@ def fixture_filter(metafunc, argnames, argvalues):
 
 
 def providers(metafunc, filters=None):
-    """
-    TODO
+    """ Gets providers based on given (+ global) filters
+
+    Note:
+        Using the default 'function' scope, each test will be run individually for each provider
+        before moving on to the next test. To group all tests related to single provider together,
+        parametrize tests in the 'module' scope.
+
+    Note:
+        testgen for providers now requires the usage of test_flags for collection to work.
+        Please visit http://cfme-tests.readthedocs.org/guides/documenting.html#documenting-tests
+        for more details.
     """
     filters = filters or []
     argnames = []
@@ -185,8 +194,8 @@ def providers(metafunc, filters=None):
     test_flags = getattr(meta, 'kwargs', {}).get('from_docs', {}).get('test_flag', '').split(',')
     flags_filter = ProviderFilter(required_flags=test_flags)
 
-    filters = filters + flags_filter
-    for provider in list_providers(filters):
+    filters = filters + [flags_filter]
+    for provider in list_providers(filters, use_global_filters=True):
         argvalues.append([provider])
         # Use the provider key for idlist, helps with readable parametrized test output
         idlist.append(provider.key)
@@ -198,114 +207,48 @@ def providers(metafunc, filters=None):
     return argnames, argvalues, idlist
 
 
-def providers_by_type(metafunc, types, required_fields=None):
-    """Get the values of the named field keys from ``cfme_data.get('management_systems', {})``
-
-    ``required_fields`` is special and can take many forms, it is used to ensure that
-    yaml data is present for a particular key, or path of keys, and can even validate
-    the values as long as they are not None.
-
+def providers_by_class(metafunc, classes, required_fields=None):
+    """ Gets providers by their class
 
     Args:
-        types: A list of provider types to include. If None, all providers are considered
-
-    Returns:
-        An tuple of ``(argnames, argvalues, idlist)`` for use in a pytest_generate_tests hook, or
-        with the :py:func:`parametrize` helper.
+        metafunc: Passed in by pytest
+        classes: List of classes to fetch
+        required_fields: See :py:class:`cfme.utils.provider.ProviderFilter`
 
     Usage:
-
         # In the function itself
         def pytest_generate_tests(metafunc):
-            argnames, argvalues, idlist = testgen.providers_by_type(
-                ['openstack', 'ec2'], required_fields=['provisioning']
+            argnames, argvalues, idlist = testgen.providers_by_class(
+                [GCEProvider, AzureProvider], required_fields=['provisioning']
             )
         metafunc.parametrize(argnames, argvalues, ids=idlist, scope='module')
 
         # Using the parametrize wrapper
-        pytest_generate_tests = testgen.parametrize(testgen.providers_by_type, ['openstack', 'ec2'],
+        pytest_generate_tests = testgen.parametrize(testgen.providers_by_class, [GCEProvider],
             scope='module')
-
-        # Using required_fields
-
-        # Ensures that ``provisioning`` exists as a yaml field
-        testgen.providers_by_type(
-            ['openstack', 'ec2'], required_fields=['provisioning']
-        )
-
-        # Ensures that ``provisioning`` exists as a yaml field and has another field in it called
-        # ``host``
-        testgen.providers_by_type(
-            ['openstack', 'ec2'], required_fields=[['provisioning', 'host']]
-        )
-
-        # Ensures that ``powerctl`` exists as a yaml field and has a value 'True'
-        testgen.providers_by_type(
-            ['openstack', 'ec2'], required_fields=[('powerctl', True)]
-        )
-
-
-
-    Note:
-
-        Using the default 'function' scope, each test will be run individually for each provider
-        before moving on to the next test. To group all tests related to single provider together,
-        parametrize tests in the 'module' scope.
-
-    Note:
-
-        testgen for providers now requires the usage of test_flags for collection to work.
-        Please visit http://cfme-tests.readthedocs.org/guides/documenting.html#documenting-tests
-        for more details.
-
     """
-    pf = ProviderFilter(types=types, required_fields=required_fields)
-    return providers(metafunc, filters=[pf])
-
-
-def providers_by_category(metafunc, categories, required_fields=None):
-    """Get the values of the named field keys from ``cfme_data.get('management_systems', {})``
-    Args:
-        categories: A list of provider categories to include. If None, all providers are considered
-
-    Usage:
-
-        # In the function itself
-        def pytest_generate_tests(metafunc):
-            argnames, argvalues, idlist = testgen.providers_by_category(
-                ['cloud', 'containers'], required_fields=['provisioning']
-            )
-        metafunc.parametrize(argnames, argvalues, ids=idlist, scope='module')
-
-        # Using the parametrize wrapper
-        pytest_generate_tests = testgen.parametrize(testgen.providers_by_category, ['cloud'],
-            scope='module')
-
-    Note:
-        See :py:func:`providers_by_type` for more information.
-    """
-    pf = ProviderFilter(categories=categories, required_fields=required_fields)
+    pf = ProviderFilter(classes=classes, required_fields=required_fields)
     return providers(metafunc, filters=[pf])
 
 
 def cloud_providers(metafunc, **options):
-    return providers_by_category(metafunc, ['cloud'], **options)
+    return providers_by_class(metafunc, [CloudProvider], **options)
 
 
 def infra_providers(metafunc, **options):
-    return providers_by_category(metafunc, ['infra'], **options)
+    return providers_by_class(metafunc, [InfraProvider], **options)
 
 
 def container_providers(metafunc, **options):
-    return providers_by_category(metafunc, ['container'], **options)
+    return providers_by_class(metafunc, [ContainerProvider], **options)
 
 
 def middleware_providers(metafunc, **options):
-    return providers_by_category(metafunc, ['middleware'], **options)
+    return providers_by_class(metafunc, [MiddlewareProvider], **options)
 
 
 def all_providers(metafunc, **options):
-    return providers(metafunc, None)
+    return providers_by_class(metafunc, [BaseProvider], **options)
 
 
 def auth_groups(metafunc, auth_mode):

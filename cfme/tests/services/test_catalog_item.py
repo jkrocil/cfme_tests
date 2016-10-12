@@ -94,7 +94,7 @@ def test_catalog_item_duplicate_name(catalog_item):
         catalog_item.create()
 
 
-def test_permissions_catalog_item_add(setup_cloud_providers, catalog_item):
+def test_permissions_catalog_item_add(catalog_item):
     """Test that a catalog can be added only with the right permissions."""
     tac.single_task_permission_test([['Everything', 'Services', 'Catalogs Explorer',
                                       'Catalog Items']],

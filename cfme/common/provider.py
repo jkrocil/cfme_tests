@@ -40,7 +40,7 @@ details_page = Region(infoblock_type='detail')
 
 class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
     # List of constants that every non-abstract subclass must have defined
-    type_mapping = {}
+    base_types = {}
     STATS_TO_MATCH = []
     string_name = ""
     page_name = ""
@@ -55,7 +55,7 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
 
     @classmethod
     def add_base_type(cls, nclass):
-        cls.type_mapping[nclass.category] = nclass
+        cls.base_types[nclass.category] = nclass
         return nclass
 
     @classmethod
@@ -543,7 +543,6 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
 
     @staticmethod
     def clear_provider_by_type(prov_class, validate=True):
-        # TODO I don't like this here + the name & params combo
         string_name = prov_class.string_name
         navigate_to(prov_class, 'All')
         logger.debug('Checking for existing {} providers...'.format(prov_class.category))
@@ -565,7 +564,6 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
 
     @staticmethod
     def wait_for_no_providers_by_type(prov_class):
-        # TODO same here
         navigate_to(prov_class, 'All')
         logger.debug('Waiting for all {} providers to disappear...'.format(prov_class.category))
         wait_for(
@@ -576,7 +574,6 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
 
     @staticmethod
     def clear_providers():
-        # TODO same here
         """Rudely clear all providers on an appliance
 
         Uses the UI in an attempt to cleanly delete the providers
@@ -585,7 +582,7 @@ class BaseProvider(Taggable, Updateable, SummaryMixin, Navigatable):
         logger.info('Destroying all appliance providers')
 
         def do_for_provider_types(op):
-            for prov_class in BaseProvider.type_mapping.values():
+            for prov_class in BaseProvider.base_types.values():
                 if prov_class.in_version[0] < version.current_version() < prov_class.in_version[1]:
                     op(prov_class)
         do_for_provider_types(partial(BaseProvider.clear_provider_by_type, validate=False))

@@ -1772,18 +1772,18 @@ class Appliance(IPAppliance):
         super(Appliance, self).__init__(browser_steal=browser_steal, container=None)
         self.name = Appliance._default_name
 
-        self._provider_name = provider_name
+        self._provider_key = provider_name
         self.vmname = vm_name
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and (
-            self.vmname == other.vmname and self._provider_name == other._provider_name)
+            self.vmname == other.vmname and self._provider_key == other._provider_key)
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return int(hashlib.md5("{}@{}".format(self.vmname, self._provider_name)).hexdigest(), 16)
+        return int(hashlib.md5("{}@{}".format(self.vmname, self._provider_key)).hexdigest(), 16)
 
     @property
     def ipapp(self):
@@ -1797,7 +1797,7 @@ class Appliance(IPAppliance):
             Cannot be cached because provider object is unpickable.
         """
         from utils.providers import get_mgmt
-        return get_mgmt(self._provider_name)
+        return get_mgmt(self._provider_key)
 
     @property
     def vm_name(self):

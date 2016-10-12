@@ -1,5 +1,4 @@
 from mgmtsystem.openstack import OpenstackSystem
-from cfme.infrastructure.provider.openstack_infra import OpenstackInfraProvider
 
 from utils.version import current_version
 
