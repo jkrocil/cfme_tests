@@ -28,7 +28,7 @@ class FormButton(Pretty):
 
     class Button:
         """Holds pieces of the XPath to be assembled."""
-        TAG_TYPES = "//a | //button | //img | //input"
+        TAG_TYPES = "//a | //miq-button | //button | //img | //input"
         TYPE_CONDITION = (
             "(contains(@class, 'button') or contains(@class, 'btn') or contains(@src, 'button'))"
         )
