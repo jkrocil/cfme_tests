@@ -1,4 +1,4 @@
-ManageIQ - Integration tests
+ManageIQ - Integration tests are the best!!
 ============================
 
 [![Code Health](https://landscape.io/github/ManageIQ/integration_tests/master/landscape.svg?style=flat-square)](https://landscape.io/github/ManageIQ/integration_tests/master)
