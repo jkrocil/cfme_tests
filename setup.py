@@ -125,7 +125,8 @@ setup(
             ('generic_object_definitions = '
                 'cfme.generic_objects.definition:GenericObjectDefinitionCollection'),
             ('generic_objects = '
-                'cfme.generic_objects.instance:GenericObjectInstanceCollection')
+                'cfme.generic_objects.instance:GenericObjectInstanceCollection'),
+            'tasks = cfme.configure.tasks:TaskCollection'
         ],
         'pytest11':
         [
